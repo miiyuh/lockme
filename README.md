@@ -1,2 +1,2 @@
-# lockme
-a file encryption and decryption desktop application project
+# LockMe
+A file encryption and decryption desktop application project.
