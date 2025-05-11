@@ -1,4 +1,3 @@
-
 "use client"; // Required for form handling
 
 import { useState } from 'react';
@@ -55,7 +54,7 @@ export default function ContactPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <Label htmlFor="name">Full Name</Label>
-                  <Input id="name" type="text" placeholder="John Doe" value={name} onChange={(e) => setName(e.target.value)} required />
+                  <Input id="name" type="text" placeholder="Jane Doe" value={name} onChange={(e) => setName(e.target.value)} required />
                 </div>
                 <div className="space-y-1">
                   <Label htmlFor="email">Email Address</Label>
@@ -95,7 +94,6 @@ export default function ContactPage() {
               LockMe Headquarters <br />
               123 Privacy Lane <br />
               Secure City, WEB 00000 <br />
-              (This is a simulated address)
             </p>
           </div>
           <div>
@@ -104,15 +102,15 @@ export default function ContactPage() {
               Support Channels
             </h3>
             <p className="text-muted-foreground">
-              <strong>Email:</strong> support@lockme.example.com <br />
-              <strong>Phone:</strong> +1 (555) SECURE-0 (Simulated) <br />
+              <strong>Email:</strong> support@lockme.my <br />
+              <strong>Phone:</strong> +60-19 252 0529 <br />
               For urgent issues, please use the contact form.
             </p>
           </div>
            <div>
             <h3 className="text-xl font-semibold text-foreground mb-3">Business Hours</h3>
             <p className="text-muted-foreground">
-              Monday - Friday: 9:00 AM - 5:00 PM (PST) <br />
+              Monday - Friday: 09:00 - 17:00 (MYT) <br />
               Weekends & Holidays: Closed
             </p>
           </div>

@@ -10,10 +10,10 @@ export default function TermsOfServicePage() {
           <CardHeader>
             <CardTitle className="flex items-center text-2xl">
               <FileText className="mr-2 h-6 w-6 text-primary" />
-              Terms of Service for LockMe
+              Terms of Service
             </CardTitle>
             <CardDescription>
-              Last Updated: {new Date().toLocaleDateString()} (Simulated Date)
+              Last Updated: {new Date().toLocaleDateString()}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -80,10 +80,6 @@ export default function TermsOfServicePage() {
                 If you have any questions about these Terms, please <a href="/contact" className="text-primary hover:underline">contact us</a>.
               </p>
             </section>
-
-            <p className="text-xs text-muted-foreground pt-4">
-              This is a sample Terms of Service for a simulated application. For a real application, consult with a legal professional.
-            </p>
           </CardContent>
         </Card>
       </div>

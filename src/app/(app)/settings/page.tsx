@@ -74,7 +74,7 @@ export default function SettingsPage() {
 
             <div className="pt-4 text-center">
               <p className="text-xs text-muted-foreground">
-                LockMe Version: 1.0.0 (Simulated)
+                LockMe Version: 1.0.0
               </p>
             </div>
           </CardContent>

@@ -1,6 +1,6 @@
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { FileText, ShieldAlert } from 'lucide-react';
+import { FileText, ShieldAlert, Server, Sparkles, Shield, Cookie, RefreshCw, Mail } from 'lucide-react';
 
 export default function PrivacyPolicyPage() {
   return (
@@ -10,10 +10,10 @@ export default function PrivacyPolicyPage() {
           <CardHeader>
             <CardTitle className="flex items-center text-2xl">
               <FileText className="mr-2 h-6 w-6 text-primary" />
-              Privacy Policy for LockMe
+              Privacy Policy
             </CardTitle>
             <CardDescription>
-              Last Updated: {new Date().toLocaleDateString()} (Simulated Date)
+              Last Updated: {new Date().toLocaleDateString()}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -42,14 +42,18 @@ export default function PrivacyPolicyPage() {
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold text-foreground mb-3 mt-6">Information We Might Collect (Hypothetical for Future Features)</h2>
+              <h2 className="text-xl font-semibold text-foreground mb-3 mt-6 flex items-center">
+                <Server className="mr-2 h-5 w-5 text-primary" /> Information We Might Collect (Hypothetical for Future Features)
+              </h2>
               <p className="text-foreground leading-relaxed">
                 Currently, LockMe does not collect personal information. If, in the future, we introduce features that require data collection (e.g., user accounts for premium services, feedback forms), this policy will be updated. Any such collection would be opt-in and transparent.
               </p>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold text-foreground mb-3 mt-6">AI Toolkit Features</h2>
+              <h2 className="text-xl font-semibold text-foreground mb-3 mt-6 flex items-center">
+                <Sparkles className="mr-2 h-5 w-5 text-primary" /> AI Toolkit Features
+              </h2>
               <p className="text-foreground leading-relaxed mb-3">
                 The AI Security Toolkit features (Passphrase Generator, Recovery Prompt Enhancer) communicate with AI models to provide their services.
               </p>
@@ -63,28 +67,36 @@ export default function PrivacyPolicyPage() {
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold text-foreground mb-3 mt-6">Web Crypto API</h2>
+              <h2 className="text-xl font-semibold text-foreground mb-3 mt-6 flex items-center">
+                <Shield className="mr-2 h-5 w-5 text-primary" /> Web Crypto API
+              </h2>
               <p className="text-foreground leading-relaxed">
                 LockMe utilizes the Web Crypto API, a standard browser feature, for all cryptographic operations. This ensures that sensitive operations are performed securely within the browser's trusted environment.
               </p>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold text-foreground mb-3 mt-6">Cookies and Local Storage</h2>
+              <h2 className="text-xl font-semibold text-foreground mb-3 mt-6 flex items-center">
+                <Cookie className="mr-2 h-5 w-5 text-primary" /> Cookies and Local Storage
+              </h2>
               <p className="text-foreground leading-relaxed">
                 LockMe may use local storage or cookies for essential application settings, such as theme preferences or sidebar state. These do not store personal information or track you across other sites.
               </p>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold text-foreground mb-3 mt-6">Changes to This Privacy Policy</h2>
+              <h2 className="text-xl font-semibold text-foreground mb-3 mt-6 flex items-center">
+                <RefreshCw className="mr-2 h-5 w-5 text-primary" /> Changes to This Privacy Policy
+              </h2>
               <p className="text-foreground leading-relaxed">
                 We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page. You are advised to review this Privacy Policy periodically for any changes.
               </p>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold text-foreground mb-3 mt-6">Contact Us</h2>
+              <h2 className="text-xl font-semibold text-foreground mb-3 mt-6 flex items-center">
+                <Mail className="mr-2 h-5 w-5 text-primary" /> Contact Us
+              </h2>
               <p className="text-foreground leading-relaxed">
                 If you have any questions about this Privacy Policy, please <a href="/contact" className="text-primary hover:underline">contact us</a>.
               </p>
@@ -99,3 +111,4 @@ export default function PrivacyPolicyPage() {
     </div>
   );
 }
+
