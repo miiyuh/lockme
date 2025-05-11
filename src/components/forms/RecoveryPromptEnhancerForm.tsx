@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { EnhanceRecoveryPromptSchema, type EnhanceRecoveryPromptFormValues } from '@/lib/schemas';
-import { handleEnhanceRecoveryPromptAction } from '@/app/actions';
+import { handleEnhanceRecoveryPromptAction } from '@/app/actions'; // Already includes logging
 import type { EnhanceRecoveryPromptOutput } from '@/ai/flows/enhance-recovery-prompt';
 
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Sparkles, Copy } from 'lucide-react';
+// No need to import logActivityAction separately if handleEnhanceRecoveryPromptAction already calls it.
 
 const RecoveryPromptEnhancerForm: FC = () => {
   const [enhancedPrompt, setEnhancedPrompt] = useState<EnhanceRecoveryPromptOutput | null>(null);
@@ -33,9 +34,8 @@ const RecoveryPromptEnhancerForm: FC = () => {
     setIsEnhancing(true);
     setEnhancedPrompt(null);
     try {
-      const result = await handleEnhanceRecoveryPromptAction({
+      const result = await handleEnhanceRecoveryPromptAction({ // This action now handles logging
         recoveryPrompt: values.recoveryPrompt,
-        // The AI flow expects userData as string, if optional and not provided, pass empty or handle in action
         userData: values.userData || "No specific user data provided for enhancement.", 
       });
       setEnhancedPrompt(result);

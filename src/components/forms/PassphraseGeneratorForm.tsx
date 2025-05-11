@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { PassphraseGeneratorSchema, type PassphraseGeneratorFormValues } from '@/lib/schemas';
-import { handleGeneratePassphraseAction } from '@/app/actions';
+import { handleGeneratePassphraseAction } from '@/app/actions'; // Already includes logging
 import type { GeneratePassphraseOutput } from '@/ai/flows/generate-passphrase';
 
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Wand2, Copy } from 'lucide-react';
+// No need to import logActivityAction separately if handleGeneratePassphraseAction already calls it.
 
 const PassphraseGeneratorForm: FC = () => {
   const [generatedPassphrase, setGeneratedPassphrase] = useState<GeneratePassphraseOutput | null>(null);
@@ -37,7 +38,7 @@ const PassphraseGeneratorForm: FC = () => {
     setIsGenerating(true);
     setGeneratedPassphrase(null);
     try {
-      const result = await handleGeneratePassphraseAction(values);
+      const result = await handleGeneratePassphraseAction(values); // This action now handles logging
       setGeneratedPassphrase(result);
       toast({
         title: "Passphrase Generated",
