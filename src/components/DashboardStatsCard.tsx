@@ -1,11 +1,10 @@
-
 import type { FC, ReactNode } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
 interface DashboardStatsCardProps {
   title: string;
-  value: string | number;
-  icon: ReactNode;
+  value: string | number | ReactNode; // Allow ReactNode for Skeleton
+  icon?: ReactNode; // Made icon optional as it was removed in a previous request
   description?: string;
   className?: string;
 }

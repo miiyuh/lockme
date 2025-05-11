@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ShieldCheck, ShieldOff, Loader2, KeyRound, Download, Lock, Unlock, Eye, EyeOff, Info, Share2, Copy, AlertTriangle } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { logActivityAction } from '@/app/actions';
 
 
 const SALT_LENGTH = 16; // bytes
@@ -242,6 +243,7 @@ const FileEncryptionCard: FC<FileEncryptionCardProps> = ({ mode }) => {
           description: `${selectedFile.name} has been encrypted. Download started as ${downloadFileName}.`,
           action: <Button variant="outline" size="sm" onClick={() => triggerDownload(encryptedBlob, downloadFileName)}><Download className="mr-2 h-4 w-4" />Download Again</Button>,
         });
+        await logActivityAction("encrypt", `Encrypted file: ${selectedFile.name}`, { fileName: selectedFile.name });
       }
     } else if (mode === 'decrypt') {
       const decryptedBlob = await decryptFile(selectedFile, values.passphrase);
@@ -256,6 +258,7 @@ const FileEncryptionCard: FC<FileEncryptionCardProps> = ({ mode }) => {
           description: `${selectedFile.name} has been decrypted. Download started as ${originalFileName}.`,
           action: <Button variant="outline" size="sm" onClick={() => triggerDownload(decryptedBlob, originalFileName)}><Download className="mr-2 h-4 w-4" />Download Again</Button>,
         });
+        await logActivityAction("decrypt", `Decrypted file: ${selectedFile.name}`, { fileName: selectedFile.name });
       }
     }
     setIsProcessing(false);
