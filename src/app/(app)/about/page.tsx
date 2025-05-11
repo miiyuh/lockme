@@ -13,7 +13,7 @@ export default function AboutPage() {
           <CardHeader className="items-center text-center">
             <div className="relative w-36 h-36 inline-block mb-4 overflow-hidden bg-transparent">
                <Image
-                src="https://lockme.my/logo_lockme_highRESver.png"
+                src="https://lockme.my/assets/img/logo_lockme_highRESver.png"
                 alt="LockMe Logo"
                 fill
                 className="object-contain"
