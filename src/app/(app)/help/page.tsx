@@ -4,6 +4,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { HelpCircle, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import Link from "next/link";
 
 const faqs = [
   {
@@ -71,7 +72,9 @@ export default function HelpPage() {
 
             <div className="text-center pt-6">
               <p className="text-muted-foreground mb-2">Can't find what you're looking for?</p>
-              <Button>Contact Support</Button>
+              <Link href="/contact">
+                <Button>Contact Support</Button>
+              </Link>
             </div>
           </CardContent>
         </Card>

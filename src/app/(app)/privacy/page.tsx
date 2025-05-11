@@ -13,7 +13,7 @@ export default function PrivacyPolicyPage() {
               Privacy Policy
             </CardTitle>
             <CardDescription>
-              Last Updated: {new Date().toLocaleDateString()}
+              Last Updated: {(new Date().toISOString().split('T')[0])}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
