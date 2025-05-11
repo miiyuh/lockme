@@ -1,4 +1,4 @@
-<img src="https://lockme.my/logo_lockme_highRESver.png" alt="LockMe logo" height="64px" />
+<img src="https://lockme.my/assets/img/logo_lockme_highRESver.png" alt="LockMe logo" height="64px" />
 A file encryption and decryption desktop application project.
 # 🔐 LockMe: Secure File Encryption and Decryption Desktop Application
 

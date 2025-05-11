@@ -30,7 +30,6 @@ const renderNavLinks = (links: NavLink[]) => {
   return links.map((link) => (
     <SidebarMenuItem key={link.href}>
       <SidebarMenuButton
-        href={link.href}
         asChild
         tooltip={{ children: link.label, side: 'right', align: 'center' }}
       >
@@ -43,7 +42,6 @@ const renderNavLinks = (links: NavLink[]) => {
   ));
 };
 
-
 export default function AppLayout({ children }: AppLayoutProps) {
   return (
     <SidebarProvider defaultOpen>
@@ -51,7 +49,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         <SidebarHeader className="p-4">
           <Link href="/" className="flex items-center justify-start text-lg font-semibold"> {/* Changed justify-center to justify-start and removed gap-2 */}
             <Image 
-              src="https://lockme.my/logo_lockme_highRESver.png" 
+              src="https://lockme.my/assets/img/logo_lockme_highRESver.png" 
               alt="LockMe Logo Placeholder" 
               width={64} // Increased width
               height={32} // Increased height
