@@ -1,5 +1,6 @@
 <img src="https://lockme.my/assets/img/logo_lockme_highRESver.png" alt="LockMe logo" height="64px" />
 A file encryption and decryption desktop application project.
+
 # 🔐 LockMe: Secure File Encryption and Decryption Desktop Application
 
 **LockMe** is a modern, cross-platform desktop application built to make file encryption and decryption secure, fast, and user-friendly. Designed for Windows and Linux users, LockMe empowers individuals and small businesses to protect sensitive data using industry-standard cryptographic techniques such as AES-256 — all with a minimal, intuitive interface.
