@@ -1,18 +1,20 @@
+
 "use client";
 
 import type { FC, DragEvent, ReactNode } from 'react';
 import { useState, useCallback } from 'react';
-import { UploadCloud, File, FileText, Image as ImageIcon, Archive, FileSpreadsheet, Presentation, FileAudio2, FileVideo2, FileCode2 } from 'lucide-react';
+import { UploadCloud, File as FileIcon, FileText, Image as ImageIcon, Archive, FileSpreadsheet, Presentation, FileAudio2, FileVideo2, FileCode2, Files } from 'lucide-react'; // Added Files icon
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
 interface FileDropzoneProps {
-  onFileDrop: (file: File) => void;
+  onFilesDrop: (files: File[]) => void; // Changed to handle multiple files
   className?: string;
+  mode?: 'encrypt' | 'decrypt'; // Added mode to adjust accept criteria
 }
 
 const getFileIcon = (file: File | null): ReactNode => {
-  if (!file) return <File size={24} className="mr-2 text-muted-foreground flex-shrink-0" />;
+  if (!file) return <FileIcon size={24} className="mr-2 text-muted-foreground flex-shrink-0" />;
 
   const type = file.type;
   const name = file.name.toLowerCase();
@@ -28,13 +30,13 @@ const getFileIcon = (file: File | null): ReactNode => {
   if (type.startsWith('text/plain') || name.endsWith('.txt') || name.endsWith('.md')) return <FileText size={24} className="mr-2 text-muted-foreground flex-shrink-0" />;
   if (type.startsWith('text/') || type === 'application/json' || type === 'application/xml' || name.endsWith('.js') || name.endsWith('.ts') || name.endsWith('.jsx') || name.endsWith('.tsx') || name.endsWith('.json') || name.endsWith('.html') || name.endsWith('.css') || name.endsWith('.py') || name.endsWith('.java') || name.endsWith('.c') || name.endsWith('.cpp') || name.endsWith('.cs') || name.endsWith('.go') || name.endsWith('.php') || name.endsWith('.rb') || name.endsWith('.swift') || name.endsWith('.kt') || name.endsWith('.rs') || name.endsWith('.sh')) return <FileCode2 size={24} className="mr-2 text-muted-foreground flex-shrink-0" />;
   
-  return <File size={24} className="mr-2 text-muted-foreground flex-shrink-0" />;
+  return <FileIcon size={24} className="mr-2 text-muted-foreground flex-shrink-0" />;
 };
 
 
-const FileDropzone: FC<FileDropzoneProps> = ({ onFileDrop, className }) => {
+const FileDropzone: FC<FileDropzoneProps> = ({ onFilesDrop, className, mode }) => {
   const [isDragging, setIsDragging] = useState(false);
-  const [droppedFile, setDroppedFile] = useState<File | null>(null);
+  const [droppedFiles, setDroppedFiles] = useState<File[]>([]); // Changed to handle multiple files
 
   const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -60,22 +62,24 @@ const FileDropzone: FC<FileDropzoneProps> = ({ onFileDrop, className }) => {
       setIsDragging(false);
 
       if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-        const file = e.dataTransfer.files[0];
-        setDroppedFile(file);
-        onFileDrop(file);
+        const filesArray = Array.from(e.dataTransfer.files);
+        setDroppedFiles(filesArray);
+        onFilesDrop(filesArray);
         e.dataTransfer.clearData();
       }
     },
-    [onFileDrop]
+    [onFilesDrop]
   );
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const file = e.target.files[0];
-      setDroppedFile(file);
-      onFileDrop(file);
+      const filesArray = Array.from(e.target.files);
+      setDroppedFiles(filesArray);
+      onFilesDrop(filesArray);
     }
   };
+
+  const acceptType = mode === 'decrypt' ? ".lockme" : "*";
 
   return (
     <div
@@ -95,19 +99,21 @@ const FileDropzone: FC<FileDropzoneProps> = ({ onFileDrop, className }) => {
         id="fileInput"
         className="hidden"
         onChange={handleFileChange}
-        // Allow any file type for encryption, specific for decryption
-        accept={className?.includes("accept-.lockme") ? ".lockme" : "*"}
+        accept={acceptType}
+        multiple // Allow multiple file selection
       />
       <UploadCloud size={48} className="mx-auto mb-4 text-muted-foreground" />
-      {droppedFile ? (
-        <div className="flex items-center justify-center text-foreground break-all">
-          {getFileIcon(droppedFile)}
-          <span className="truncate">{droppedFile.name}</span>
+      {droppedFiles.length > 0 ? (
+         <div className="flex items-center justify-center text-foreground break-all">
+            {droppedFiles.length === 1 ? getFileIcon(droppedFiles[0]) : <Files size={24} className="mr-2 text-muted-foreground flex-shrink-0" />}
+            <span className="truncate">
+                {droppedFiles.length === 1 ? droppedFiles[0].name : `${droppedFiles.length} files selected`}
+            </span>
         </div>
       ) : (
         <>
-          <p className="text-lg font-semibold text-foreground">Drag & drop your file here</p>
-          <p className="text-sm text-muted-foreground">or click to select a file (from your computer)</p>
+          <p className="text-lg font-semibold text-foreground">Drag & drop your file(s) here</p>
+          <p className="text-sm text-muted-foreground">or click to select file(s) (from your computer)</p>
         </>
       )}
     </div>

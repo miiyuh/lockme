@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { FC } from 'react';
@@ -5,7 +6,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { EnhanceRecoveryPromptSchema, type EnhanceRecoveryPromptFormValues } from '@/lib/schemas';
-import { handleEnhanceRecoveryPromptAction } from '@/app/actions'; // Already includes logging
+import { handleEnhanceRecoveryPromptAction } from '@/app/actions'; 
 import type { EnhanceRecoveryPromptOutput } from '@/ai/flows/enhance-recovery-prompt';
 
 import { Button } from '@/components/ui/button';
@@ -15,7 +16,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Sparkles, Copy } from 'lucide-react';
-// No need to import logActivityAction separately if handleEnhanceRecoveryPromptAction already calls it.
 
 const RecoveryPromptEnhancerForm: FC = () => {
   const [enhancedPrompt, setEnhancedPrompt] = useState<EnhanceRecoveryPromptOutput | null>(null);
@@ -34,7 +34,7 @@ const RecoveryPromptEnhancerForm: FC = () => {
     setIsEnhancing(true);
     setEnhancedPrompt(null);
     try {
-      const result = await handleEnhanceRecoveryPromptAction({ // This action now handles logging
+      const result = await handleEnhanceRecoveryPromptAction({ 
         recoveryPrompt: values.recoveryPrompt,
         userData: values.userData || "No specific user data provided for enhancement.", 
       });
@@ -63,7 +63,7 @@ const RecoveryPromptEnhancerForm: FC = () => {
     }).catch(err => {
       toast({
         title: "Copy Failed",
-        description: "Could not copy to clipboard.",
+        description: `Could not copy to clipboard. Error: ${(err as Error).message}`,
         variant: "destructive",
       });
     });
@@ -117,7 +117,7 @@ const RecoveryPromptEnhancerForm: FC = () => {
             <Label htmlFor="enhancedPromptText">Your Enhanced Prompt</Label>
              <div className="flex items-center space-x-2">
               <Textarea id="enhancedPromptText" value={enhancedPrompt.enhancedPrompt} readOnly rows={3} className="font-mono"/>
-              <Button variant="outline" size="icon" onClick={() => copyToClipboard(enhancedPrompt.enhancedPrompt)}>
+              <Button variant="outline" size="icon" onClick={() => copyToClipboard(enhancedPrompt.enhancedPrompt)} aria-label="Copy enhanced prompt">
                 <Copy className="h-4 w-4" />
               </Button>
             </div>

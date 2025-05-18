@@ -1,3 +1,4 @@
+
 import type { Timestamp } from "firebase/firestore";
 
 export interface Activity {
@@ -18,6 +19,7 @@ export interface SnippetDocument {
   isEncrypted: boolean;
   iv?: string;
   salt?: string;
+  tags?: string[]; // Added for snippet tagging
   createdAt: Timestamp;
   updatedAt: Timestamp;
   // userId?: string; // For future user-specific snippets

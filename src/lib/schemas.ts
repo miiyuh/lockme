@@ -16,6 +16,6 @@ export const EnhanceRecoveryPromptSchema = z.object({
 export type EnhanceRecoveryPromptFormValues = z.infer<typeof EnhanceRecoveryPromptSchema>;
 
 export const FileEncryptionSchema = z.object({
-  passphrase: z.string().min(8, "Passphrase must be at least 8 characters long."),
+  passphrase: z.string().min(1, "Passphrase cannot be empty."), // Changed min length from 8 to 1
 });
 export type FileEncryptionFormValues = z.infer<typeof FileEncryptionSchema>;

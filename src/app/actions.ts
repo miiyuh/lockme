@@ -1,7 +1,9 @@
+
 "use server";
 
 import { generatePassphrase, type GeneratePassphraseInput, type GeneratePassphraseOutput } from "@/ai/flows/generate-passphrase";
 import { enhanceRecoveryPrompt, type EnhanceRecoveryPromptInput, type EnhanceRecoveryPromptOutput } from "@/ai/flows/enhance-recovery-prompt";
+import { analyzePassphraseStrength, type AnalyzePassphraseStrengthInput, type AnalyzePassphraseStrengthOutput } from "@/ai/flows/analyze-passphrase-strength";
 import { addActivity } from "@/lib/services/firestoreService";
 import type { Activity } from "@/types/firestore";
 
@@ -24,6 +26,18 @@ export async function handleEnhanceRecoveryPromptAction(input: EnhanceRecoveryPr
   } catch (error) {
     console.error("Error enhancing recovery prompt:", error);
     throw new Error("Failed to enhance recovery prompt. Please try again.");
+  }
+}
+
+export async function handleAnalyzePassphraseStrengthAction(input: AnalyzePassphraseStrengthInput): Promise<AnalyzePassphraseStrengthOutput> {
+  try {
+    // No need to log this specific AI action unless desired for analytics.
+    // It's a sub-feature of passphrase input.
+    const result = await analyzePassphraseStrength(input);
+    return result;
+  } catch (error) {
+    console.error("Error analyzing passphrase strength:", error);
+    throw new Error("Failed to analyze passphrase strength. Please try again.");
   }
 }
 

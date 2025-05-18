@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { PassphraseGeneratorSchema, type PassphraseGeneratorFormValues } from '@/lib/schemas';
-import { handleGeneratePassphraseAction } from '@/app/actions'; // Already includes logging
+import { handleGeneratePassphraseAction } from '@/app/actions'; 
 import type { GeneratePassphraseOutput } from '@/ai/flows/generate-passphrase';
 
 import { Button } from '@/components/ui/button';
@@ -13,11 +13,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Wand2, Copy } from 'lucide-react';
-// No need to import logActivityAction separately if handleGeneratePassphraseAction already calls it.
 
 const PassphraseGeneratorForm: FC = () => {
   const [generatedPassphrase, setGeneratedPassphrase] = useState<GeneratePassphraseOutput | null>(null);
@@ -38,7 +37,7 @@ const PassphraseGeneratorForm: FC = () => {
     setIsGenerating(true);
     setGeneratedPassphrase(null);
     try {
-      const result = await handleGeneratePassphraseAction(values); // This action now handles logging
+      const result = await handleGeneratePassphraseAction(values); 
       setGeneratedPassphrase(result);
       toast({
         title: "Passphrase Generated",
@@ -64,7 +63,7 @@ const PassphraseGeneratorForm: FC = () => {
     }).catch(err => {
       toast({
         title: "Copy Failed",
-        description: `Could not copy ${type.toLowerCase()} to clipboard.`,
+        description: `Could not copy ${type.toLowerCase()} to clipboard. Error: ${(err as Error).message}`,
         variant: "destructive",
       });
     });
@@ -81,7 +80,7 @@ const PassphraseGeneratorForm: FC = () => {
               <FormItem>
                 <FormLabel>Passphrase Length</FormLabel>
                 <FormControl>
-                  <Input type="number" placeholder="e.g., 16" {...field} />
+                  <Input type="number" placeholder="e.g., 16" {...field} onChange={e => field.onChange(parseInt(e.target.value,10) || 0)} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -159,7 +158,7 @@ const PassphraseGeneratorForm: FC = () => {
               <Label htmlFor="generatedPassphraseText">Passphrase</Label>
               <div className="flex items-center space-x-2">
                 <Input id="generatedPassphraseText" type="text" value={generatedPassphrase.passphrase} readOnly className="font-mono"/>
-                <Button variant="outline" size="icon" onClick={() => copyToClipboard(generatedPassphrase.passphrase, 'Passphrase')}>
+                <Button variant="outline" size="icon" onClick={() => copyToClipboard(generatedPassphrase.passphrase, 'Passphrase')} aria-label="Copy passphrase">
                   <Copy className="h-4 w-4" />
                 </Button>
               </div>
@@ -168,7 +167,7 @@ const PassphraseGeneratorForm: FC = () => {
               <Label htmlFor="recoveryPromptText">Recovery Prompt</Label>
                <div className="flex items-center space-x-2">
                 <Textarea id="recoveryPromptText" value={generatedPassphrase.recoveryPrompt} readOnly rows={2} className="font-mono"/>
-                 <Button variant="outline" size="icon" onClick={() => copyToClipboard(generatedPassphrase.recoveryPrompt, 'Recovery Prompt')}>
+                 <Button variant="outline" size="icon" onClick={() => copyToClipboard(generatedPassphrase.recoveryPrompt, 'Recovery Prompt')} aria-label="Copy recovery prompt">
                   <Copy className="h-4 w-4" />
                 </Button>
               </div>

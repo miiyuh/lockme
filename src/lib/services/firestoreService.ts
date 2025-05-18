@@ -36,8 +36,6 @@ export async function getRecentActivities(count?: number): Promise<Activity[]> {
   try {
     const activitiesRef = collection(db, ACTIVITIES_COLLECTION);
     let q;
-    // If count is provided and greater than 0, limit the results.
-    // Otherwise, fetch all activities.
     if (count && count > 0) {
       q = query(activitiesRef, orderBy("timestamp", "desc"), limit(count));
     } else {
@@ -61,6 +59,7 @@ export async function addSnippetToFirestore(snippetData: Omit<SnippetDocument, '
   try {
     const docRef = await addDoc(collection(db, SNIPPETS_COLLECTION), {
       ...snippetData,
+      tags: snippetData.tags || [], // Ensure tags is an array
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
@@ -79,7 +78,12 @@ export async function getSnippetsFromFirestore(): Promise<SnippetDocument[]> {
     
     const snippets: SnippetDocument[] = [];
     querySnapshot.forEach((doc) => {
-      snippets.push({ id: doc.id, ...doc.data() } as SnippetDocument);
+      const data = doc.data();
+      snippets.push({ 
+        id: doc.id, 
+        ...data,
+        tags: data.tags || [] // Ensure tags is an array on retrieval
+      } as SnippetDocument);
     });
     return snippets;
   } catch (error) {
@@ -93,7 +97,12 @@ export async function getSnippetFromFirestore(snippetId: string): Promise<Snippe
     const snippetRef = doc(db, SNIPPETS_COLLECTION, snippetId);
     const docSnap = await getDoc(snippetRef);
     if (docSnap.exists()) {
-      return { id: docSnap.id, ...docSnap.data() } as SnippetDocument;
+      const data = docSnap.data();
+      return { 
+        id: docSnap.id, 
+        ...data,
+        tags: data.tags || [] 
+      } as SnippetDocument;
     }
     return null;
   } catch (error) {
@@ -108,11 +117,13 @@ export async function updateSnippetInFirestore(snippetId: string, updates: Parti
     const snippetRef = doc(db, SNIPPETS_COLLECTION, snippetId);
     await updateDoc(snippetRef, {
       ...updates,
+      // If tags are being updated, ensure they are an array
+      ...(updates.tags && { tags: Array.isArray(updates.tags) ? updates.tags : [] }),
       updatedAt: serverTimestamp(),
     });
   } catch (error) {
     console.error("Error updating snippet in Firestore: ", error);
-    throw error; // Re-throw to handle in the component
+    throw error; 
   }
 }
 
@@ -122,6 +133,6 @@ export async function deleteSnippetFromFirestore(snippetId: string): Promise<voi
     await deleteDoc(snippetRef);
   } catch (error) {
     console.error("Error deleting snippet from Firestore: ", error);
-    throw error; // Re-throw to handle in the component
+    throw error; 
   }
 }

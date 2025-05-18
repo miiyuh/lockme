@@ -1,26 +1,27 @@
 
 "use client";
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Code, PlusCircle, Trash2, Copy, Lock, Unlock, Eye, EyeOff, ListCollapse, RefreshCw } from 'lucide-react';
+import { Code, PlusCircle, Trash2, Copy, Lock, Unlock, Eye, EyeOff, ListCollapse, RefreshCw, Search, Tag, Filter } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { logActivityAction } from '@/app/actions';
-import { addSnippetToFirestore, getSnippetsFromFirestore, updateSnippetInFirestore, deleteSnippetFromFirestore, getSnippetFromFirestore } from '@/lib/services/firestoreService';
+import { addSnippetToFirestore, getSnippetsFromFirestore, updateSnippetInFirestore, deleteSnippetFromFirestore } from '@/lib/services/firestoreService';
 import type { SnippetDocument } from '@/types/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Timestamp, deleteField }from 'firebase/firestore';
+import { Badge } from '@/components/ui/badge';
 
 
-// Client-side representation, similar to SnippetDocument but id is guaranteed and timestamps might be JS Date
 interface ClientSnippet extends Omit<SnippetDocument, 'createdAt' | 'updatedAt'> {
   id: string;
-  createdAt?: Date | Timestamp; // Allow Date for easier display formatting
+  createdAt?: Date | Timestamp; 
   updatedAt?: Date | Timestamp;
+  tags: string[]; // Ensure tags is always present and an array
 }
 
 
@@ -46,22 +47,23 @@ export default function CodeSnippetsPage() {
   const [snippets, setSnippets] = useState<ClientSnippet[]>([]);
   const [isLoadingSnippets, setIsLoadingSnippets] = useState(true);
   const [newSnippetName, setNewSnippetName] = useState('');
-  const [newSnippetLang, setNewSnippetLang] = useState(''); // Default to empty string for placeholder
+  const [newSnippetLang, setNewSnippetLang] = useState(''); 
   const [newSnippetCode, setNewSnippetCode] = useState('');
+  const [newSnippetTags, setNewSnippetTags] = useState('');
   const [passphrase, setPassphrase] = useState('');
   const [showPassphrase, setShowPassphrase] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedTagFilter, setSelectedTagFilter] = useState<string | null>(null);
   const { toast } = useToast();
 
   const fetchSnippets = useCallback(async () => {
     setIsLoadingSnippets(true);
     try {
       const firestoreSnippets = await getSnippetsFromFirestore();
-      // Convert Firestore Timestamps to JS Dates for client-side use if needed for display
       const clientSnippets = firestoreSnippets.map(s => ({
         ...s,
-        id: s.id!, // id will be present from Firestore
-        // createdAt: s.createdAt.toDate(), // Example if you need JS Date
-        // updatedAt: s.updatedAt.toDate(),
+        id: s.id!, 
+        tags: s.tags || [], // Ensure tags is an array
       }));
       setSnippets(clientSnippets);
     } catch (error) {
@@ -77,21 +79,46 @@ export default function CodeSnippetsPage() {
     fetchSnippets();
   }, [fetchSnippets]);
 
+  const allTags = useMemo(() => {
+    const tagsSet = new Set<string>();
+    snippets.forEach(snippet => {
+      (snippet.tags || []).forEach(tag => tagsSet.add(tag));
+    });
+    return Array.from(tagsSet).sort();
+  }, [snippets]);
+
+  const filteredSnippets = useMemo(() => {
+    return snippets.filter(snippet => {
+      const matchesSearchTerm = 
+        snippet.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        snippet.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (snippet.tags || []).some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
+      
+      const matchesTagFilter = selectedTagFilter ? (snippet.tags || []).includes(selectedTagFilter) : true;
+      
+      return matchesSearchTerm && matchesTagFilter;
+    });
+  }, [snippets, searchTerm, selectedTagFilter]);
+
+
   const addSnippet = async () => {
     if (!newSnippetName.trim() || !newSnippetCode.trim()) {
       toast({ title: "Error", description: "Snippet name and code cannot be empty.", variant: "destructive" });
       return;
     }
-    if (!newSnippetLang) { // Validate language selection
+    if (!newSnippetLang) { 
       toast({ title: "Error", description: "Please select a language for the snippet.", variant: "destructive" });
       return;
     }
     
+    const tagsArray = newSnippetTags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
+
     const snippetData: Omit<SnippetDocument, 'id' | 'createdAt' | 'updatedAt'> = {
       name: newSnippetName,
       language: newSnippetLang,
       code: newSnippetCode,
       isEncrypted: false,
+      tags: tagsArray,
     };
 
     try {
@@ -100,9 +127,10 @@ export default function CodeSnippetsPage() {
         await logActivityAction("snippet_created", `Created snippet: ${newSnippetName}`, { snippetName: newSnippetName });
         setNewSnippetName('');
         setNewSnippetCode('');
-        setNewSnippetLang(''); // Reset language selection
+        setNewSnippetLang(''); 
+        setNewSnippetTags('');
         toast({ title: "Snippet Added", description: `'${newSnippetName}' has been added to Firestore.` });
-        fetchSnippets(); // Refresh list
+        fetchSnippets(); 
       } else {
         throw new Error("Failed to get new snippet ID.");
       }
@@ -120,7 +148,7 @@ export default function CodeSnippetsPage() {
       await deleteSnippetFromFirestore(id);
       await logActivityAction("snippet_deleted", `Deleted snippet: ${snippetToDelete.name}`, { snippetName: snippetToDelete.name });
       toast({ title: "Snippet Deleted", description: `'${snippetToDelete.name}' has been removed from Firestore.` });
-      fetchSnippets(); // Refresh list
+      fetchSnippets(); 
     } catch (error) {
       console.error("Failed to delete snippet from Firestore:", error);
       toast({ title: "Error Deleting Snippet", description: "Could not remove the snippet from the database.", variant: "destructive" });
@@ -172,7 +200,7 @@ export default function CodeSnippetsPage() {
       };
       await updateSnippetInFirestore(id, updates);
       toast({ title: "Snippet Encrypted", description: `'${snippet.name}' is now encrypted in Firestore.` });
-      fetchSnippets(); // Refresh list
+      fetchSnippets(); 
     } catch (error) {
       console.error("Encryption error:", error);
       toast({ title: "Encryption Failed", description: (error as Error).message, variant: "destructive" });
@@ -209,12 +237,12 @@ export default function CodeSnippetsPage() {
       const updates: Partial<Omit<SnippetDocument, 'id' | 'createdAt'>> = {
         code: decryptedCode,
         isEncrypted: false,
-        iv: deleteField(), // Clear IV and salt upon decryption
+        iv: deleteField(), 
         salt: deleteField(),
       };
       await updateSnippetInFirestore(id, updates);
       toast({ title: "Snippet Decrypted", description: `'${snippet.name}' is now decrypted in Firestore.` });
-      fetchSnippets(); // Refresh list
+      fetchSnippets(); 
     } catch (error) {
       console.error("Decryption error:", error);
       toast({ title: "Decryption Failed", description: "Incorrect passphrase or corrupted data.", variant: "destructive" });
@@ -247,16 +275,15 @@ export default function CodeSnippetsPage() {
                   placeholder="Enter passphrase for encryption/decryption"
                   className="flex-grow"
                 />
-                <Button variant="ghost" size="icon" onClick={() => setShowPassphrase(!showPassphrase)} type="button">
+                <Button variant="ghost" size="icon" onClick={() => setShowPassphrase(!showPassphrase)} type="button" aria-label={showPassphrase ? "Hide passphrase" : "Show passphrase"}>
                   {showPassphrase ? <EyeOff className="h-4 w-4"/> : <Eye className="h-4 w-4"/>}
-                  <span className="sr-only">{showPassphrase ? 'Hide passphrase' : 'Show passphrase'}</span>
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground mt-1">This passphrase is used to encrypt/decrypt snippets. Keep it secure. It is not stored.</p>
             </div>
 
             <Card className="p-4 bg-muted/30">
-              <h3 className="text-lg font-medium mb-2">Add New Snippet</h3>
+              <h3 className="text-lg font-medium mb-3">Add New Snippet</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>
                   <Label htmlFor="snippetName">Snippet Name</Label>
@@ -276,6 +303,10 @@ export default function CodeSnippetsPage() {
                   </Select>
                 </div>
               </div>
+              <div className="mb-4">
+                <Label htmlFor="snippetTags">Tags (comma-separated)</Label>
+                <Input id="snippetTags" value={newSnippetTags} onChange={(e) => setNewSnippetTags(e.target.value)} placeholder="e.g., react, util, api" />
+              </div>
               <div>
                 <Label htmlFor="snippetCode">Code</Label>
                 <Textarea id="snippetCode" value={newSnippetCode} onChange={(e) => setNewSnippetCode(e.target.value)} placeholder="Paste your code here..." rows={6} className="font-mono text-sm" />
@@ -287,12 +318,37 @@ export default function CodeSnippetsPage() {
           </CardContent>
         </Card>
 
-        <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">Your Snippets ({snippets.length})</h2>
-            <Button variant="outline" size="sm" onClick={fetchSnippets} disabled={isLoadingSnippets}>
-              <RefreshCw className={`mr-2 h-4 w-4 ${isLoadingSnippets ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
+        <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+            <h2 className="text-xl font-semibold">Your Snippets ({filteredSnippets.length})</h2>
+            <div className="flex items-center gap-2 w-full md:w-auto">
+                <div className="relative flex-grow">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                        type="search" 
+                        placeholder="Search snippets..." 
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-8 w-full"
+                    />
+                </div>
+                 {allTags.length > 0 && (
+                    <Select value={selectedTagFilter || ""} onValueChange={(value) => setSelectedTagFilter(value === "all" ? null : value)}>
+                        <SelectTrigger className="w-auto min-w-[150px]" aria-label="Filter by tag">
+                             <Filter className="mr-2 h-4 w-4 text-muted-foreground" />
+                            <SelectValue placeholder="Filter by tag..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Tags</SelectItem>
+                            {allTags.map(tag => (
+                                <SelectItem key={tag} value={tag}>{tag}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                )}
+                <Button variant="outline" size="icon" onClick={fetchSnippets} disabled={isLoadingSnippets} aria-label="Refresh snippets">
+                  <RefreshCw className={`h-4 w-4 ${isLoadingSnippets ? 'animate-spin' : ''}`} />
+                </Button>
+            </div>
         </div>
 
         {isLoadingSnippets ? (
@@ -316,16 +372,25 @@ export default function CodeSnippetsPage() {
                     </Card>
                 ))}
             </div>
-        ) : snippets.length > 0 ? (
+        ) : filteredSnippets.length > 0 ? (
           <div className="space-y-4">
-            {snippets.map(snippet => (
+            {filteredSnippets.map(snippet => (
               <Card key={snippet.id} className="overflow-hidden">
-                <CardHeader className="flex flex-row items-center justify-between bg-card-foreground/5 p-4">
+                <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-2 bg-card-foreground/5 p-4">
                   <div>
                     <CardTitle className="text-lg">{snippet.name}</CardTitle>
                     <CardDescription>{snippet.language} {snippet.isEncrypted ? "(Encrypted)" : ""}</CardDescription>
+                     {snippet.tags && snippet.tags.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                            {snippet.tags.map(tag => (
+                                <Badge key={tag} variant="secondary" className="text-xs">
+                                    <Tag className="mr-1 h-3 w-3" />{tag}
+                                </Badge>
+                            ))}
+                        </div>
+                    )}
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 mt-2 md:mt-0 flex-shrink-0">
                     {snippet.isEncrypted ? (
                       <Button variant="outline" size="sm" onClick={() => decryptSnippet(snippet.id)} disabled={!passphrase.trim()} type="button">
                         <Unlock className="mr-2 h-4 w-4" /> Decrypt
@@ -335,10 +400,10 @@ export default function CodeSnippetsPage() {
                         <Lock className="mr-2 h-4 w-4" /> Encrypt
                       </Button>
                     )}
-                    <Button variant="ghost" size="icon" onClick={() => copySnippet(snippet.isEncrypted ? "Snippet is encrypted. Decrypt to view/copy." : snippet.code)} title="Copy code" type="button">
+                    <Button variant="ghost" size="icon" onClick={() => copySnippet(snippet.isEncrypted ? "Snippet is encrypted. Decrypt to view/copy." : snippet.code)} title="Copy code" type="button" aria-label="Copy snippet code">
                       <Copy className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => deleteSnippet(snippet.id)} className="text-destructive hover:text-destructive" title="Delete snippet" type="button">
+                    <Button variant="ghost" size="icon" onClick={() => deleteSnippet(snippet.id)} className="text-destructive hover:text-destructive" title="Delete snippet" type="button" aria-label="Delete snippet">
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
@@ -358,8 +423,10 @@ export default function CodeSnippetsPage() {
         ) : (
            <Card className="text-center p-8 border-dashed">
              <ListCollapse className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-            <CardTitle className="text-xl mb-2">No Snippets Yet</CardTitle>
-            <CardDescription>Add your first code snippet using the form above to get started!</CardDescription>
+            <CardTitle className="text-xl mb-2">No Snippets Found</CardTitle>
+            <CardDescription>
+                {searchTerm || selectedTagFilter ? "Try adjusting your search or filter." : "Add your first code snippet using the form above!"}
+            </CardDescription>
           </Card>
         )}
       </div>
