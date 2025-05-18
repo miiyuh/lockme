@@ -9,3 +9,16 @@ export interface Activity {
   snippetName?: string; // For snippet actions
   userId?: string; // For future user-specific logging
 }
+
+export interface SnippetDocument {
+  id?: string; // Firestore document ID
+  name: string;
+  language: string;
+  code: string;
+  isEncrypted: boolean;
+  iv?: string;
+  salt?: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+  // userId?: string; // For future user-specific snippets
+}

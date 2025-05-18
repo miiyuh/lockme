@@ -14,9 +14,10 @@ import {
   SidebarProvider,
   SidebarTrigger,
   SidebarFooter,
-  SidebarSeparator, 
+  SidebarSeparator,
   SidebarGroup,
-  SidebarGroupLabel
+  SidebarGroupLabel,
+  SidebarRail // Added SidebarRail
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { categorizedNavLinks, type NavLink } from '@/lib/nav-links';
@@ -42,21 +43,22 @@ const renderNavLinks = (links: NavLink[]) => {
   ));
 };
 
+
 export default function AppLayout({ children }: AppLayoutProps) {
   return (
     <SidebarProvider defaultOpen>
       <Sidebar className="border-r" collapsible="icon">
         <SidebarHeader className="p-4">
           <Link href="/" className="flex items-center justify-start text-lg font-semibold"> {/* Changed justify-center to justify-start and removed gap-2 */}
-            <Image 
-              src="https://lockme.my/assets/img/logo_lockme_highRESver.png" 
-              alt="LockMe Logo Placeholder" 
+            <Image
+              src="https://lockme.my/assets/img/logo_lockme_highRESver.png"
+              alt="LockMe Logo"
               width={64} // Increased width
               height={32} // Increased height
               className="h-8 w-auto group-data-[collapsible=icon]:h-10 group-data-[collapsible=icon]:w-10 object-contain" // Increased size
-              data-ai-hint="brand logo" 
+              data-ai-hint="brand logo"
             />
-            
+
           </Link>
         </SidebarHeader>
         <SidebarContent className="p-2 flex-grow">
@@ -64,9 +66,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
             <SidebarGroup className="p-0">
               {renderNavLinks(categorizedNavLinks.main)}
             </SidebarGroup>
-            
+
             <SidebarSeparator className="my-2 group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:my-2" />
-            
+
             <SidebarGroup className="p-0">
                <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden text-xs text-muted-foreground px-2 py-1">Support</SidebarGroupLabel>
               {renderNavLinks(categorizedNavLinks.secondary)}
@@ -86,6 +88,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           </p>
         </SidebarFooter>
       </Sidebar>
+      <SidebarRail /> {/* Added SidebarRail here */}
       <SidebarInset className="flex flex-col min-h-screen">
         <header className="sticky top-0 z-10 flex h-14 items-center justify-between gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 py-4">
           <SidebarTrigger className="md:hidden">
@@ -106,4 +109,3 @@ export default function AppLayout({ children }: AppLayoutProps) {
     </SidebarProvider>
   );
 }
-
