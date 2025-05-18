@@ -17,6 +17,7 @@ import { Timestamp, deleteField }from 'firebase/firestore';
 import { Badge } from '@/components/ui/badge';
 
 
+
 interface ClientSnippet extends Omit<SnippetDocument, 'createdAt' | 'updatedAt'> {
   id: string;
   createdAt?: Date | Timestamp; 

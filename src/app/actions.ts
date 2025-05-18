@@ -3,7 +3,7 @@
 
 import { generatePassphrase, type GeneratePassphraseInput, type GeneratePassphraseOutput } from "@/ai/flows/generate-passphrase";
 import { enhanceRecoveryPrompt, type EnhanceRecoveryPromptInput, type EnhanceRecoveryPromptOutput } from "@/ai/flows/enhance-recovery-prompt";
-import { analyzePassphraseStrength, type AnalyzePassphraseStrengthInput, type AnalyzePassphraseStrengthOutput } from "@/ai/flows/analyze-passphrase-strength";
+import { analyzePassphraseStrength, type AnalyzePassphraseStrengthInput, type AnalyzePassphraseStrengthOutput } from "../ai/flows/analyze-passphrase-strength";
 import { addActivity } from "@/lib/services/firestoreService";
 import type { Activity } from "@/types/firestore";
 
