@@ -1,4 +1,3 @@
-
 import type { Timestamp } from "firebase/firestore";
 
 export interface Activity {
@@ -8,7 +7,7 @@ export interface Activity {
   timestamp: Timestamp;
   fileName?: string; // For encrypt/decrypt
   snippetName?: string; // For snippet actions
-  userId?: string; // For future user-specific logging
+  userId?: string; // For user-specific logging
 }
 
 export interface SnippetDocument {
@@ -19,8 +18,8 @@ export interface SnippetDocument {
   isEncrypted: boolean;
   iv?: string;
   salt?: string;
-  tags?: string[]; // Added for snippet tagging
+  tags?: string[];
   createdAt: Timestamp;
   updatedAt: Timestamp;
-  // userId?: string; // For future user-specific snippets
+  userId?: string; // For user-specific snippets
 }

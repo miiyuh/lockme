@@ -1,4 +1,5 @@
 
+"use client"; // Required for useRouter and useAuth
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { PanelLeft } from 'lucide-react';
@@ -17,11 +18,15 @@ import {
   SidebarSeparator,
   SidebarGroup,
   SidebarGroupLabel,
-  SidebarRail // Added SidebarRail
+  SidebarRail
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { categorizedNavLinks, type NavLink } from '@/lib/nav-links';
 import { ThemeToggleButton } from '@/components/ThemeToggleButton';
+import { useAuth } from '@/contexts/AuthContext'; // Added
+import { useRouter } from 'next/navigation'; // Added
+import { useEffect } from 'react'; // Added
+import AuthButton from '@/components/AuthButton'; // Added
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -31,6 +36,7 @@ const renderNavLinks = (links: NavLink[]) => {
   return links.map((link) => (
     <SidebarMenuItem key={link.href}>
       <SidebarMenuButton
+        href={link.href}
         asChild
         tooltip={{ children: link.label, side: 'right', align: 'center' }}
       >
@@ -45,20 +51,35 @@ const renderNavLinks = (links: NavLink[]) => {
 
 
 export default function AppLayout({ children }: AppLayoutProps) {
+  const { user, loading } = useAuth(); // Added
+  const router = useRouter(); // Added
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [user, loading, router]);
+
+  if (loading || !user) {
+    // Show loading state or nothing while redirecting
+    // This prevents flashing the layout before redirect
+    // You can use a more sophisticated loading spinner here
+    return <div className="flex h-screen items-center justify-center">Loading...</div>;
+  }
+
   return (
     <SidebarProvider defaultOpen>
       <Sidebar className="border-r" collapsible="icon">
         <SidebarHeader className="p-4">
-          <Link href="/" className="flex items-center justify-start text-lg font-semibold"> {/* Changed justify-center to justify-start and removed gap-2 */}
+          <Link href="/" className="flex items-center justify-start text-lg font-semibold">
             <Image
               src="https://lockme.my/assets/img/logo_lockme_highRESver.png"
               alt="LockMe Logo"
-              width={64} // Increased width
-              height={32} // Increased height
-              className="h-8 w-auto group-data-[collapsible=icon]:h-10 group-data-[collapsible=icon]:w-10 object-contain" // Increased size
+              width={64} 
+              height={32} 
+              className="h-8 w-auto group-data-[collapsible=icon]:h-10 group-data-[collapsible=icon]:w-10 object-contain"
               data-ai-hint="brand logo"
             />
-
           </Link>
         </SidebarHeader>
         <SidebarContent className="p-2 flex-grow">
@@ -88,15 +109,16 @@ export default function AppLayout({ children }: AppLayoutProps) {
           </p>
         </SidebarFooter>
       </Sidebar>
-      <SidebarRail /> {/* Added SidebarRail here */}
+      <SidebarRail />
       <SidebarInset className="flex flex-col min-h-screen">
         <header className="sticky top-0 z-10 flex h-14 items-center justify-between gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 py-4">
           <SidebarTrigger className="md:hidden">
              <PanelLeft />
              <span className="sr-only">Toggle Menu</span>
           </SidebarTrigger>
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-2"> {/* Added flex and gap */}
             <ThemeToggleButton />
+            <AuthButton /> {/* Added AuthButton */}
           </div>
         </header>
         <main className="flex-1 overflow-auto p-4 sm:px-6 sm:py-0 md:gap-8">

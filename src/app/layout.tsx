@@ -3,11 +3,12 @@ import type { Metadata } from 'next';
 import { JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
-import { ThemeProvider } from '@/components/ThemeProvider'; // Changed from next-themes directly for custom setup
+import { ThemeProvider } from '@/components/ThemeProvider';
+import { AuthProvider } from '../contexts/AuthContext'; // Added
 
 const jetbrainsMono = JetBrains_Mono({ 
   subsets: ['latin'], 
-  weight: ['400', '500', '600', '700'], // Added more weights if needed
+  weight: ['400', '500', '600', '700'],
   variable: '--font-jetbrains-mono' 
 });
 
@@ -30,7 +31,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <AuthProvider> {/* Added AuthProvider */}
+            {children}
+          </AuthProvider>
           <Toaster />
         </ThemeProvider>
       </body>
