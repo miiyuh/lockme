@@ -11,10 +11,10 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Settings, UserCircle, Image as ImageIcon, KeyRound, Trash2, Loader2, CheckCircle2, UploadCloud, Crop, AlertTriangle, MailWarning, ShieldAlert } from 'lucide-react';
+import { Settings, UserCircle, Image as ImageIcon, KeyRound, Trash2, Loader2, CheckCircle2, UploadCloud, Crop, AlertTriangle, MailWarning, ShieldAlert, MailCheck } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { auth, storage } from '@/lib/firebase';
-import { updateProfile, type User, sendPasswordResetEmail, deleteUser } from 'firebase/auth';
+import { updateProfile, type User, sendPasswordResetEmail, deleteUser, sendEmailVerification } from 'firebase/auth';
 import { ref, uploadBytesResumable, getDownloadURL, type UploadTaskSnapshot } from 'firebase/storage';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -76,6 +76,7 @@ export default function SettingsPage() {
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [isUploadingPicture, setIsUploadingPicture] = useState(false);
+  const [isResendingVerification, setIsResendingVerification] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [isCompressing, setIsCompressing] = useState(false);
   
@@ -247,6 +248,24 @@ export default function SettingsPage() {
     } finally { setIsUpdatingProfile(false); }
   };
 
+  const handleResendVerificationEmail = async () => {
+    if (!auth.currentUser) {
+      toast({ title: "Error", description: "You must be logged in.", variant: "destructive" });
+      return;
+    }
+    setIsResendingVerification(true);
+    try {
+      await sendEmailVerification(auth.currentUser);
+      toast({ title: "Verification Email Sent", description: `A new verification email has been sent to ${auth.currentUser.email}. Please check your inbox.` });
+    } catch (error: any) {
+      console.error("Error resending verification email:", error);
+      toast({ title: "Failed to Resend", description: error.message || "Could not resend verification email.", variant: "destructive" });
+    } finally {
+      setIsResendingVerification(false);
+    }
+  };
+
+
   const handleDeleteAccount = async () => {
     if (!auth.currentUser) { toast({ title: "Error", description: "You must be logged in.", variant: "destructive" }); return; }
     setIsDeletingAccount(true);
@@ -277,7 +296,7 @@ export default function SettingsPage() {
     setDefaultEncryptionStrength("aes-256-gcm");
   };
 
-  const isProcessing = isCompressing || isUploadingPicture || isUpdatingProfile || isDeletingAccount;
+  const isProcessing = isCompressing || isUploadingPicture || isUpdatingProfile || isDeletingAccount || isResendingVerification;
 
   if (authLoading) { return <div className="container mx-auto py-8 text-center">Loading settings...</div>; }
   if (!user) { return <div className="container mx-auto py-8 text-center">Please log in to manage settings.</div>; }
@@ -315,7 +334,7 @@ export default function SettingsPage() {
               <Form {...profileForm}>
                 <form onSubmit={profileForm.handleSubmit(handleDisplayNameUpdate)} className="space-y-4">
                   <FormField control={profileForm.control} name="displayName" render={({ field }) => (<FormItem><FormLabel>Display Name</FormLabel><FormControl><Input placeholder="Your Name" {...field} disabled={isProcessing} /></FormControl><FormMessage /></FormItem>)} />
-                  <Button type="submit" disabled={isProcessing || !profileForm.formState.isDirty || !profileForm.formState.isValid}>{isUpdatingProfile && !isUploadingPicture && !isCompressing && !isDeletingAccount && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{(!isUpdatingProfile || isUploadingPicture || isCompressing || isDeletingAccount) && <CheckCircle2 className="mr-2 h-4 w-4" />}Save Display Name</Button>
+                  <Button type="submit" disabled={isProcessing || !profileForm.formState.isDirty || !profileForm.formState.isValid}>{isUpdatingProfile && !isUploadingPicture && !isCompressing && !isDeletingAccount && !isResendingVerification && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{(!isUpdatingProfile || isUploadingPicture || isCompressing || isDeletingAccount || isResendingVerification) && <CheckCircle2 className="mr-2 h-4 w-4" />}Save Display Name</Button>
                 </form>
               </Form>
             </section>
@@ -326,9 +345,15 @@ export default function SettingsPage() {
               <div className="space-y-2">
                 <Label className="font-medium">Current Email Address</Label>
                 <Input type="email" value={user.email || ''} disabled className="bg-muted/50" />
-                 <p className="text-xs text-muted-foreground">
-                  Status: {user.emailVerified ? <span className="text-green-600">Verified</span> : <span className="text-yellow-600">Not Verified</span>}
+                 <p className="text-xs text-muted-foreground mt-1">
+                  Status: {user.emailVerified ? <span className="text-green-600 flex items-center"><MailCheck className="mr-1 h-4 w-4"/>Verified</span> : <span className="text-yellow-600 flex items-center"><MailWarning className="mr-1 h-4 w-4"/>Not Verified</span>}
                 </p>
+                {!user.emailVerified && (
+                  <Button variant="outline" size="sm" onClick={handleResendVerificationEmail} disabled={isProcessing}>
+                    {isResendingVerification ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MailCheck className="mr-2 h-4 w-4"/>}
+                    Resend Verification Email
+                  </Button>
+                )}
                  <p className="text-xs text-muted-foreground mt-1">
                     To change your email address, please <Link href="/contact" className="text-primary hover:underline">contact support</Link>.
                   </p>

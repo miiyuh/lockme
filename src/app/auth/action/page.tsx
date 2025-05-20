@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState, Suspense } from 'react';
+import React, { useEffect, useState, Suspense, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -11,7 +11,7 @@ import { auth } from '@/lib/firebase';
 import { applyActionCode, verifyPasswordResetCode, confirmPasswordReset } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Label } from '@/components/ui/label'; // Added Label import
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { PasswordResetActionSchema, type PasswordResetActionFormValues } from '@/lib/schemas';
@@ -24,9 +24,11 @@ function AuthActionContent() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
 
-  const [mode, setMode] = useState<string | null>(null);
-  const [actionCode, setActionCode] = useState<string | null>(null);
-  const [loadingMessage, setLoadingMessage] = useState<string | null>("Verifying action...");
+  const mode = React.useMemo(() => searchParams.get('mode'), [searchParams]);
+  const actionCode = React.useMemo(() => searchParams.get('oobCode'), [searchParams]);
+
+  const [actionProcessed, setActionProcessed] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [emailForPasswordReset, setEmailForPasswordReset] = useState<string | null>(null);
@@ -42,35 +44,8 @@ function AuthActionContent() {
     mode: 'onChange',
   });
 
-  useEffect(() => {
-    const currentMode = searchParams.get('mode');
-    const currentActionCode = searchParams.get('oobCode');
-
-    if (currentMode) setMode(currentMode);
-    if (currentActionCode) setActionCode(currentActionCode);
-
-    if (!currentMode || !currentActionCode) {
-      setErrorMessage("Invalid action link. Required parameters are missing.");
-      setLoadingMessage(null);
-      return;
-    }
-
-    switch (currentMode) {
-      case 'verifyEmail':
-        setLoadingMessage("Verifying your email address...");
-        handleVerifyEmail(currentActionCode);
-        break;
-      case 'resetPassword':
-        setLoadingMessage("Verifying password reset code...");
-        handleVerifyPasswordReset(currentActionCode);
-        break;
-      default:
-        setErrorMessage(`Unsupported action mode: ${currentMode}.`);
-        setLoadingMessage(null);
-    }
-  }, [searchParams]);
-
-  const handleVerifyEmail = async (code: string) => {
+  const handleVerifyEmail = useCallback(async (code: string) => {
+    setLoadingMessage("Verifying your email address...");
     try {
       await applyActionCode(auth, code);
       setSuccessMessage("Your email address has been successfully verified! You can now log in.");
@@ -81,26 +56,29 @@ function AuthActionContent() {
       toast({ title: "Verification Failed", description: error.message, variant: "destructive" });
     } finally {
       setLoadingMessage(null);
+      setActionProcessed(true);
     }
-  };
+  }, [toast, setActionProcessed, setErrorMessage, setLoadingMessage, setSuccessMessage]);
 
-  const handleVerifyPasswordReset = async (code: string) => {
+  const handleVerifyPasswordReset = useCallback(async (code: string) => {
+    setLoadingMessage("Verifying password reset code...");
     try {
       const email = await verifyPasswordResetCode(auth, code);
-      setEmailForPasswordReset(email); // Store email to show to user
+      setEmailForPasswordReset(email);
       setLoadingMessage(null); // Ready for password input
-      // Now the form for new password will be shown
     } catch (error: any) {
       console.error("Password reset code verification error:", error);
       setErrorMessage(error.message || "Invalid or expired password reset link.");
       toast({ title: "Invalid Link", description: error.message, variant: "destructive" });
       setLoadingMessage(null);
+      setActionProcessed(true); // Mark as processed if initial verification fails
     }
-  };
+  }, [toast, setEmailForPasswordReset, setErrorMessage, setLoadingMessage, setActionProcessed]);
 
-  const onPasswordResetSubmit: SubmitHandler<PasswordResetActionFormValues> = async (data) => {
+  const onPasswordResetSubmit: SubmitHandler<PasswordResetActionFormValues> = useCallback(async (data) => {
     if (!actionCode) {
       setErrorMessage("Action code is missing. Cannot reset password.");
+      setActionProcessed(true);
       return;
     }
     setLoadingMessage("Resetting your password...");
@@ -111,15 +89,48 @@ function AuthActionContent() {
       setSuccessMessage("Your password has been successfully reset! You can now log in with your new password.");
       toast({ title: "Password Reset Successful!", description: "You can now login." });
       passwordResetForm.reset();
-      setEmailForPasswordReset(null); // Clear sensitive state
+      setEmailForPasswordReset(null);
     } catch (error: any) {
       console.error("Password reset confirmation error:", error);
       setErrorMessage(error.message || "Failed to reset password. Please try again.");
       toast({ title: "Password Reset Failed", description: error.message, variant: "destructive" });
     } finally {
       setLoadingMessage(null);
+      setActionProcessed(true);
     }
-  };
+  }, [actionCode, toast, passwordResetForm, setEmailForPasswordReset, setActionProcessed, setErrorMessage, setLoadingMessage, setSuccessMessage]);
+
+
+  useEffect(() => {
+    if (!mode || !actionCode) {
+      // Only set error if not already in a loading/success/error state from a previous attempt or initial load
+      if (!actionProcessed && !loadingMessage && !successMessage && !errorMessage) {
+        setErrorMessage("Invalid action link. Required parameters (mode or oobCode) are missing.");
+        setLoadingMessage(null);
+        setActionProcessed(true); // Mark this path as "handled"
+      }
+      return;
+    }
+
+    if (actionProcessed) {
+      return; // Action has already been processed or an error/success state is set
+    }
+
+    // At this point, mode and actionCode are valid, and action has not been processed.
+    switch (mode) {
+      case 'verifyEmail':
+        handleVerifyEmail(actionCode);
+        break;
+      case 'resetPassword':
+        handleVerifyPasswordReset(actionCode);
+        break;
+      default:
+        setErrorMessage(`Unsupported action mode: ${mode}.`);
+        setLoadingMessage(null);
+        setActionProcessed(true); // Mark unsupported modes as processed
+    }
+  }, [mode, actionCode, actionProcessed, handleVerifyEmail, handleVerifyPasswordReset]);
+
 
   const renderContent = () => {
     if (loadingMessage) {
@@ -245,10 +256,20 @@ function AuthActionContent() {
       );
     }
 
+    // Fallback for initial load before mode/actionCode are ready, or if logic doesn't set a specific message
+    if (!mode || !actionCode) {
+        return (
+             <div className="flex flex-col items-center justify-center text-center p-6">
+                <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+                <p className="text-lg text-muted-foreground">Loading action...</p>
+            </div>
+        );
+    }
+
     return (
          <div className="flex flex-col items-center justify-center text-center p-6">
             <AlertTriangle className="h-12 w-12 text-yellow-500 mb-4" />
-            <p className="text-lg text-muted-foreground">Invalid or unrecognized action.</p>
+            <p className="text-lg text-muted-foreground">Invalid or unrecognized action. Please check the link or try again.</p>
              <Button asChild className="mt-6">
                 <Link href="/">Go to Homepage</Link>
             </Button>
@@ -263,8 +284,8 @@ function AuthActionContent() {
                  <Image
                     src="https://lockme.my/assets/img/logo_lockme_highRESver.png"
                     alt="LockMe Logo"
-                    width={120} 
-                    height={60} 
+                    width={120}
+                    height={60}
                     className="h-10 w-auto"
                     priority
                     data-ai-hint="logo"
@@ -299,4 +320,3 @@ export default function AuthActionPage() {
   );
 }
 
-    
