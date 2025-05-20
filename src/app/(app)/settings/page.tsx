@@ -11,10 +11,10 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Settings, UserCircle, Image as ImageIcon, KeyRound, Trash2, Loader2, CheckCircle2, UploadCloud, Crop, AlertTriangle } from 'lucide-react';
+import { Settings, UserCircle, Image as ImageIcon, KeyRound, Trash2, Loader2, CheckCircle2, UploadCloud, Crop, AlertTriangle, MailWarning, ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { auth, storage } from '@/lib/firebase';
-import { updateProfile, type User, sendPasswordResetEmail } from 'firebase/auth';
+import { updateProfile, type User, sendPasswordResetEmail, deleteUser } from 'firebase/auth';
 import { ref, uploadBytesResumable, getDownloadURL, type UploadTaskSnapshot } from 'firebase/storage';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -26,6 +26,7 @@ import 'react-image-crop/dist/ReactCrop.css';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import Link from 'next/link';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { useRouter } from 'next/navigation';
 
 
 const profileFormSchema = z.object({
@@ -70,8 +71,10 @@ const ENCRYPTION_STRENGTH_KEY = 'lockme-defaultEncryptionStrength';
 export default function SettingsPage() {
   const { user, setUser, loading: authLoading } = useAuth();
   const { toast } = useToast();
+  const router = useRouter();
 
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [isUploadingPicture, setIsUploadingPicture] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [isCompressing, setIsCompressing] = useState(false);
@@ -90,7 +93,7 @@ export default function SettingsPage() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [defaultEncryptionStrength, setDefaultEncryptionStrength] = useState("aes-256-gcm");
 
-  const form = useForm<ProfileFormValues>({
+  const profileForm = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: { displayName: user?.displayName || '' },
     mode: 'onChange',
@@ -120,19 +123,22 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (user) {
-      form.reset({ displayName: user.displayName || '' });
-      if (!profileImageFile) { setProfileImagePreview(user.photoURL || null); }
+      profileForm.reset({ displayName: user.displayName || '' });
+      if (!profileImageFile) { 
+        setProfileImagePreview(user.photoURL || null);
+      }
     }
-  }, [user, user?.photoURL, profileImageFile, form]);
+  }, [user, user?.photoURL, profileImageFile, profileForm]);
 
   const handleDisplayNameUpdate: SubmitHandler<ProfileFormValues> = async (data) => {
-    if (!user) { toast({ title: "Error", description: "You must be logged in.", variant: "destructive" }); return; }
+    if (!user || !auth.currentUser) { toast({ title: "Error", description: "You must be logged in.", variant: "destructive" }); return; }
     setIsUpdatingProfile(true);
     try {
-      await updateProfile(user, { displayName: data.displayName });
-      if (auth.currentUser) { await auth.currentUser.reload(); setUser(auth.currentUser); }
+      await updateProfile(auth.currentUser, { displayName: data.displayName });
+      await auth.currentUser.reload(); 
+      setUser(auth.currentUser); 
       toast({ title: "Profile Updated", description: "Your display name has been updated." });
-      form.reset({ displayName: data.displayName }); 
+      profileForm.reset({ displayName: data.displayName }); 
     } catch (error) {
       console.error("Error updating display name:", error);
       toast({ title: "Update Failed", description: (error as Error).message, variant: "destructive" });
@@ -140,19 +146,20 @@ export default function SettingsPage() {
   };
 
   const handleOriginalFileSelect = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+    const fileInput = event.target;
+    const file = fileInput.files?.[0];
     if (file) {
       console.log(`SettingsPage: Original file selected: ${file.name}, Size: ${(file.size / 1024 / 1024).toFixed(2)} MB`);
-      if (file.size > 15 * 1024 * 1024) {
+      if (file.size > 15 * 1024 * 1024) { 
         toast({ title: "File Too Large", description: "Original image cannot exceed 15MB.", variant: "destructive" });
-        event.target.value = ""; return;
+        if (fileInput) fileInput.value = ""; return;
       }
       setCrop(undefined); 
       const reader = new FileReader();
       reader.addEventListener('load', () => { setImgSrcToCrop(reader.result?.toString() || ''); setShowCropperModal(true); });
       reader.readAsDataURL(file);
     }
-    event.target.value = ""; 
+     if (fileInput) fileInput.value = ""; 
   };
 
   function onImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
@@ -191,7 +198,7 @@ export default function SettingsPage() {
   };
 
   const handleProfileImageUpload = async () => {
-    if (!user || !profileImageFile) { toast({ title: "Error", description: "No image selected or user not logged in.", variant: "destructive"}); return; }
+    if (!user || !auth.currentUser || !profileImageFile) { toast({ title: "Error", description: "No image selected or user not logged in.", variant: "destructive"}); return; }
     setIsUploadingPicture(true); setUploadProgress(null); 
     const fileExtension = profileImageFile.name.split('.').pop() || 'png';
     const timestamp = Date.now();
@@ -200,29 +207,32 @@ export default function SettingsPage() {
     const storageRef = ref(storage, filePath);
     console.log(`SettingsPage: Starting upload to: ${filePath}. Compressed Size: ${(profileImageFile.size / 1024 / 1024).toFixed(2)} MB`);
     const uploadTask = uploadBytesResumable(storageRef, profileImageFile);
-    uploadTask.on('state_changed', (snapshot: UploadTaskSnapshot) => {
-      const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-      setUploadProgress(progress);
-      console.log(`SettingsPage: Upload is ${progress.toFixed(2)}% done. State: ${snapshot.state}. Transferred: ${snapshot.bytesTransferred}/${snapshot.totalBytes}`);
-    }, (error) => {
-      console.error("SettingsPage: Error uploading profile picture:", error);
-      toast({ title: "Upload Failed", description: (error as Error).message, variant: "destructive" });
-      setIsUploadingPicture(false); setUploadProgress(null);
-    }, async () => {
-      try {
-        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-        console.log('SettingsPage: File available at', downloadURL);
-        if (auth.currentUser) {
-          await updateProfile(auth.currentUser, { photoURL: downloadURL });
-          await auth.currentUser.reload(); setUser(auth.currentUser);
-        }
-        toast({ title: "Profile Picture Updated!", description: "Your new profile picture is now active." });
-        setProfileImageFile(null); 
-      } catch (error) {
-        console.error("SettingsPage: Error getting download URL or updating profile:", error);
-        toast({ title: "Profile Update Failed", description: "Could not finalize profile picture update.", variant: "destructive" });
-      } finally { setIsUploadingPicture(false); setUploadProgress(null); }
-    });
+    uploadTask.on('state_changed', 
+      (snapshot: UploadTaskSnapshot) => {
+        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        setUploadProgress(progress);
+        console.log(`SettingsPage: Upload is ${progress.toFixed(2)}% done. State: ${snapshot.state}. Transferred: ${snapshot.bytesTransferred}/${snapshot.totalBytes}`);
+      }, 
+      (error) => {
+        console.error("SettingsPage: Error uploading profile picture:", error);
+        toast({ title: "Upload Failed", description: (error as Error).message, variant: "destructive" });
+        setIsUploadingPicture(false); setUploadProgress(null);
+      }, 
+      async () => {
+        try {
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          console.log('SettingsPage: File available at', downloadURL);
+          await updateProfile(auth.currentUser!, { photoURL: downloadURL });
+          await auth.currentUser!.reload(); 
+          setUser(auth.currentUser); 
+          toast({ title: "Profile Picture Updated!", description: "Your new profile picture is now active." });
+          setProfileImageFile(null); 
+        } catch (error) {
+          console.error("SettingsPage: Error getting download URL or updating profile:", error);
+          toast({ title: "Profile Update Failed", description: "Could not finalize profile picture update.", variant: "destructive" });
+        } finally { setIsUploadingPicture(false); setUploadProgress(null); }
+      }
+    );
   };
 
   const handlePasswordChange = async () => {
@@ -237,17 +247,37 @@ export default function SettingsPage() {
     } finally { setIsUpdatingProfile(false); }
   };
 
+  const handleDeleteAccount = async () => {
+    if (!auth.currentUser) { toast({ title: "Error", description: "You must be logged in.", variant: "destructive" }); return; }
+    setIsDeletingAccount(true);
+    try {
+      await deleteUser(auth.currentUser);
+      toast({ title: "Account Deleted", description: "Your account has been permanently deleted. We're sad to see you go!" });
+      router.push('/login'); 
+    } catch (error: any) {
+      console.error("Error deleting account:", error);
+      let description = "Could not delete account. Please try again.";
+      if (error.code === 'auth/requires-recent-login') {
+        description = "This operation is sensitive and requires recent authentication. Please log out and log back in before deleting your account.";
+      } else {
+        description = error.message || description;
+      }
+      toast({ title: "Account Deletion Failed", description, variant: "destructive" });
+    } finally {
+      setIsDeletingAccount(false);
+    }
+  };
+
+
   const handleClearLocalCache = () => {
     localStorage.removeItem(NOTIFICATIONS_KEY); 
     localStorage.removeItem(ENCRYPTION_STRENGTH_KEY);
-    // Add any other app-specific localStorage keys here
     toast({ title: "Local Cache Cleared", description: "Locally stored app preferences have been reset." });
-    // Optionally reset state variables to defaults
     setNotificationsEnabled(true);
     setDefaultEncryptionStrength("aes-256-gcm");
   };
 
-  const isProcessing = isCompressing || isUploadingPicture || isUpdatingProfile;
+  const isProcessing = isCompressing || isUploadingPicture || isUpdatingProfile || isDeletingAccount;
 
   if (authLoading) { return <div className="container mx-auto py-8 text-center">Loading settings...</div>; }
   if (!user) { return <div className="container mx-auto py-8 text-center">Please log in to manage settings.</div>; }
@@ -267,6 +297,7 @@ export default function SettingsPage() {
         <Card className="w-full shadow-xl">
           <CardHeader><CardTitle className="flex items-center text-2xl"><Settings className="mr-3 h-7 w-7 text-primary" />Application Settings</CardTitle><CardDescription>Customize your LockMe experience and manage your profile.</CardDescription></CardHeader>
           <CardContent className="space-y-10">
+            
             <section className="space-y-6 p-6 border rounded-lg shadow-sm">
               <h3 className="text-xl font-semibold text-foreground flex items-center"><UserCircle className="mr-2 h-6 w-6 text-primary" />Profile</h3>
               <div className="flex flex-col items-center sm:flex-row sm:items-start gap-4">
@@ -275,25 +306,74 @@ export default function SettingsPage() {
                   <Label htmlFor="profile-picture-input-trigger" className={`font-medium text-sm text-primary hover:underline ${isProcessing ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}><ImageIcon className="inline mr-1 h-4 w-4" /> Change Profile Picture</Label>
                   <Input id="profile-picture-input-trigger" type="file" accept="image/png, image/jpeg, image/gif" className="hidden" onChange={handleOriginalFileSelect} disabled={isProcessing} />
                   <p className="text-xs text-muted-foreground mt-1">PNG, JPG, GIF up to 15MB (original). Compression may take a moment for large images.</p>
-                  {(isCompressing || (isUploadingPicture && uploadProgress === null)) && <p className="text-xs text-primary mt-1 flex items-center"><Loader2 className="mr-1 h-3 w-3 animate-spin" /> {isCompressing ? 'Processing image...' : (uploadProgress === null ? 'Preparing upload...' : 'Starting upload...')}</p>}
+                  {(isCompressing || (isUploadingPicture && uploadProgress === null && profileImageFile)) && <p className="text-xs text-primary mt-1 flex items-center"><Loader2 className="mr-1 h-3 w-3 animate-spin" /> {isCompressing ? 'Compressing image...' : (uploadProgress === null && profileImageFile ? 'Preparing upload...' : 'Starting upload...')}</p>}
                   {profileImageFile && !isCompressing && (<div className="mt-3 flex flex-col sm:flex-row items-center gap-2"><span className="text-xs text-muted-foreground truncate max-w-[150px] sm:max-w-xs" title={profileImageFile.name}>Ready: {profileImageFile.name} ({(profileImageFile.size / 1024 / 1024).toFixed(2)} MB)</span><Button onClick={handleProfileImageUpload} size="sm" disabled={isProcessing} className="w-full sm:w-auto">{isUploadingPicture ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />{uploadProgress !== null ? `Uploading ${Math.round(uploadProgress)}%` : 'Preparing...'}</>) : (<><UploadCloud className="mr-2 h-4 w-4" /> Upload Image</>)}</Button></div>)}
                   {isUploadingPicture && uploadProgress !== null && (<div className="mt-2"><Progress value={uploadProgress} className="h-2 w-full" /><p className="text-xs text-muted-foreground text-center mt-1">{`${Math.round(uploadProgress)}% uploaded`}</p></div>)}
-                   {isUploadingPicture && uploadProgress === null && (<p className="text-xs text-muted-foreground text-center mt-1">Starting upload...</p>)}
+                  {isUploadingPicture && uploadProgress === null && !isCompressing && profileImageFile && (<p className="text-xs text-muted-foreground text-center mt-1">Starting upload...</p>)}
                 </div>
               </div>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(handleDisplayNameUpdate)} className="space-y-4">
-                  <FormField control={form.control} name="displayName" render={({ field }) => (<FormItem><FormLabel>Display Name</FormLabel><FormControl><Input placeholder="Your Name" {...field} disabled={isProcessing} /></FormControl><FormMessage /></FormItem>)} />
-                  <Button type="submit" disabled={isProcessing || !form.formState.isDirty}>{isUpdatingProfile && !isUploadingPicture && !isCompressing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{(!isUpdatingProfile || isUploadingPicture || isCompressing) && <CheckCircle2 className="mr-2 h-4 w-4" />}Save Display Name</Button>
+              <Form {...profileForm}>
+                <form onSubmit={profileForm.handleSubmit(handleDisplayNameUpdate)} className="space-y-4">
+                  <FormField control={profileForm.control} name="displayName" render={({ field }) => (<FormItem><FormLabel>Display Name</FormLabel><FormControl><Input placeholder="Your Name" {...field} disabled={isProcessing} /></FormControl><FormMessage /></FormItem>)} />
+                  <Button type="submit" disabled={isProcessing || !profileForm.formState.isDirty || !profileForm.formState.isValid}>{isUpdatingProfile && !isUploadingPicture && !isCompressing && !isDeletingAccount && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{(!isUpdatingProfile || isUploadingPicture || isCompressing || isDeletingAccount) && <CheckCircle2 className="mr-2 h-4 w-4" />}Save Display Name</Button>
                 </form>
               </Form>
-              <div className="space-y-2">
-                <Label htmlFor="email" className="font-medium">Email Address</Label>
-                <Input id="email" type="email" value={user.email || ''} disabled className="bg-muted/50" />
-                <p className="text-xs text-muted-foreground">Your email for account recovery. To change your email, please <Link href="/contact" className="text-primary hover:underline">contact support</Link>.</p>
-              </div>
-              <div><Button variant="outline" onClick={handlePasswordChange} disabled={isProcessing}><KeyRound className="mr-2 h-4 w-4" />Change Password</Button><p className="text-xs text-muted-foreground mt-2">Secure your account by regularly updating your password. An email will be sent to you.</p></div>
             </section>
+
+            <section className="space-y-6 p-6 border rounded-lg shadow-sm">
+              <h3 className="text-xl font-semibold text-foreground flex items-center"><ShieldAlert className="mr-2 h-6 w-6 text-primary" />Account Management</h3>
+              
+              <div className="space-y-2">
+                <Label className="font-medium">Current Email Address</Label>
+                <Input type="email" value={user.email || ''} disabled className="bg-muted/50" />
+                 <p className="text-xs text-muted-foreground">
+                  Status: {user.emailVerified ? <span className="text-green-600">Verified</span> : <span className="text-yellow-600">Not Verified</span>}
+                </p>
+                 <p className="text-xs text-muted-foreground mt-1">
+                    To change your email address, please <Link href="/contact" className="text-primary hover:underline">contact support</Link>.
+                  </p>
+              </div>
+              
+              <hr className="my-4"/>
+
+              <div>
+                <Button variant="outline" onClick={handlePasswordChange} disabled={isProcessing}>
+                  <KeyRound className="mr-2 h-4 w-4" />Change Password
+                </Button>
+                <p className="text-xs text-muted-foreground mt-2">Secure your account by regularly updating your password. An email will be sent to you with instructions.</p>
+              </div>
+
+              <hr className="my-4"/>
+              
+              <div>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" disabled={isProcessing}>
+                      <Trash2 className="mr-2 h-4 w-4" />Delete Account
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This action cannot be undone. This will permanently delete your LockMe account. 
+                        All your authentication data will be removed. 
+                        <strong className="text-destructive-foreground">Your associated data in Firestore (like code snippets and activity logs) and files in Firebase Storage (like profile pictures) will NOT be automatically deleted by this action.</strong> You would need to contact support or use other means to manage that data if desired.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel disabled={isDeletingAccount}>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDeleteAccount} disabled={isDeletingAccount}>
+                        {isDeletingAccount ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                        Yes, delete my account
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+                <p className="text-xs text-muted-foreground mt-2">Permanently remove your LockMe account and associated login credentials.</p>
+              </div>
+            </section>
+
             <section className="space-y-6 p-6 border rounded-lg shadow-sm">
               <h3 className="text-xl font-semibold text-foreground">General Preferences</h3>
               <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/30 transition-colors">
@@ -308,6 +388,7 @@ export default function SettingsPage() {
                 </Select><p className="text-xs text-muted-foreground">Select the default algorithm for new files.</p>
               </div>
             </section>
+
             <section className="space-y-4 p-6 border rounded-lg shadow-sm">
               <h3 className="text-xl font-semibold text-foreground">Data Management</h3>
                <div className="p-4 border rounded-lg hover:bg-muted/30 transition-colors">

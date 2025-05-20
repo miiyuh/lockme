@@ -5,14 +5,14 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { auth, app } from '@/lib/firebase'; // Ensure app is imported if not already
+import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification, type User } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { UserPlus, Eye, EyeOff, Loader2, ArrowLeft } from 'lucide-react';
+import { UserPlus, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -75,6 +75,10 @@ export default function SignupPage() {
 
   useEffect(() => {
     if (!authLoading && user) {
+      // Do not redirect immediately after signup if email verification is sent.
+      // User might be redirected after verifying email or on next login attempt.
+      // For now, let's keep the redirect to allow access to the app,
+      // but an alternative is to redirect to a "please verify your email" page.
       router.push('/');
     }
   }, [user, authLoading, router]);
@@ -105,8 +109,20 @@ export default function SignupPage() {
       await updateProfile(userCredential.user, {
         displayName: username,
       });
-      toast({ title: 'Signup Successful', description: `Welcome to LockMe, ${username}! You are now logged in.` });
-      // Redirect is handled by the useEffect above
+
+      // Send email verification
+      if (userCredential.user) {
+        await sendEmailVerification(userCredential.user);
+        toast({ 
+          title: 'Signup Successful!', 
+          description: `Welcome, ${username}! A verification email has been sent to ${email}. Please check your inbox (and spam folder) to verify your account.`,
+          duration: 7000, // Longer duration for this important message
+        });
+      } else {
+        // This case should ideally not happen if createUserWithEmailAndPassword succeeded
+        toast({ title: 'Signup Successful', description: `Welcome, ${username}! Please log in.` });
+      }
+      // The useEffect above will handle redirecting to '/'
     } catch (error: any) {
       console.error("Signup error:", error);
       toast({
@@ -119,16 +135,17 @@ export default function SignupPage() {
     }
   };
 
-  if (authLoading || (!authLoading && user)) {
+  if (authLoading || (!authLoading && user && user.emailVerified)) { // Keep loading if user is not verified to show message
     return (
       <div className="flex h-screen items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
     );
   }
-
+  
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center bg-background p-4 py-12 sm:px-6 lg:px-8">
+       {/* Removed "Back to Home" button as per previous request */}
       <div className="flex w-full max-w-5xl flex-col items-center gap-10 lg:flex-row lg:gap-16">
         {/* Branding Section */}
         <div className="order-2 flex-1 text-center lg:order-1 lg:text-left">
