@@ -2,7 +2,7 @@
 "use client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import DashboardStatsCard from '@/components/DashboardStatsCard';
-import { FileLock, FileUp, KeyRound, ListChecks, Sparkles, MessageSquareQuote, MessageCircleQuestion, Wand2, ShieldCheck, ShieldOff, Activity as LucideActivity } from 'lucide-react';
+import { FileLock, FileUp, KeyRound, ListChecks, Sparkles, MessageSquareQuote, MessageCircleQuestion, Wand2, ShieldCheck, ShieldOff, LucideActivity, FileInput, FileOutput, Activity, FolderLock, ListTree, Brain } from 'lucide-react'; // Added Activity, FolderLock, ListTree, Brain
 import { useEffect, useState, useCallback } from 'react';
 import { getRecentActivities } from '@/lib/services/firestoreService';
 import type { Activity as ActivityType } from '@/types/firestore';
@@ -12,11 +12,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import { useActivity } from '@/contexts/ActivityContext'; // Import useActivity
+import { useActivity } from '@/contexts/ActivityContext';
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
-  const { lastActivityTimestamp } = useActivity(); // Consume lastActivityTimestamp
+  const { lastActivityTimestamp } = useActivity();
   const [displayedActivities, setDisplayedActivities] = useState<ActivityType[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   
@@ -126,7 +126,7 @@ export default function DashboardPage() {
       case 'snippet_updated':
       case 'snippet_deleted':
          return <ListChecks className="h-4 w-4 text-primary mr-2" />;
-      default: return <ListChecks className="h-4 w-4 text-muted-foreground mr-2" />;
+      default: return <LucideActivity className="h-4 w-4 text-muted-foreground mr-2" />;
     }
   };
 
@@ -256,21 +256,25 @@ export default function DashboardPage() {
         <DashboardStatsCard
           title="Files Encrypted"
           value={filesEncrypted.toString()}
+          icon={<FolderLock className="text-primary" />}
           description="Your secured files"
         />
         <DashboardStatsCard
           title="Files Decrypted"
           value={filesDecrypted.toString()}
+          icon={<FileOutput className="text-primary" />}
           description="Your accessed files"
         />
         <DashboardStatsCard
           title="Passphrases Generated"
           value={passphrasesGenerated.toString()}
+          icon={<Brain className="text-primary" />}
           description="Via AI Toolkit"
         />
         <DashboardStatsCard
           title="Total Operations"
           value={totalOperations.toString()}
+          icon={<Activity className="text-primary" />}
           description="Your encrypt, decrypt, generate, enhance, and snippet operations"
         />
       </div>
@@ -301,9 +305,22 @@ export default function DashboardPage() {
                 </ul>
               </ScrollArea>
             ) : (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                {user ? "No recent activity to display. Start using LockMe!" : "Log in to see your activity."}
-              </p>
+              <div className="text-center py-10">
+                <ListTree className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                <p className="text-lg text-muted-foreground mb-2">
+                  {user ? "No recent activity to display." : "Log in to see your activity."}
+                </p>
+                {user && (
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Start encrypting files or generating passphrases to see your activity here!
+                  </p>
+                )}
+                {user && (
+                  <Button asChild variant="default" size="sm">
+                    <Link href="/encrypt">Encrypt a File</Link>
+                  </Button>
+                )}
+              </div>
             )}
              {displayedActivities.length > 0 && (
                 <p className="mt-4 text-xs text-muted-foreground">
