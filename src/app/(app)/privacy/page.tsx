@@ -1,6 +1,9 @@
 
+"use client";
+
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { FileText, ShieldAlert, Server, Sparkles, Shield, Cookie, RefreshCw, Mail } from 'lucide-react';
+import Link from 'next/link';
 
 export default function PrivacyPolicyPage() {
   return (
@@ -10,10 +13,10 @@ export default function PrivacyPolicyPage() {
           <CardHeader>
             <CardTitle className="flex items-center text-2xl">
               <FileText className="mr-2 h-6 w-6 text-primary" />
-              Privacy Policy
+              Privacy Policy for LockMe
             </CardTitle>
             <CardDescription>
-              Last Updated: {new Date().toISOString().split('T')[0]}
+              Last Updated: {new Date().toISOString().slice(0, 10)}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -80,7 +83,7 @@ export default function PrivacyPolicyPage() {
                 <Cookie className="mr-2 h-5 w-5 text-primary" /> Cookies and Local Storage
               </h2>
               <p className="text-foreground leading-relaxed">
-                LockMe may use local storage or cookies for essential application settings, such as theme preferences or sidebar state. These do not store personal information or track you across other sites.
+                LockMe may use local storage or cookies for essential application settings, such as theme preferences or sidebar state. These do not store personal information or track you across other sites. User accounts, if enabled, will use Firebase Authentication which may use cookies for session management.
               </p>
             </section>
 
@@ -98,17 +101,12 @@ export default function PrivacyPolicyPage() {
                 <Mail className="mr-2 h-5 w-5 text-primary" /> Contact Us
               </h2>
               <p className="text-foreground leading-relaxed">
-                If you have any questions about this Privacy Policy, please <a href="/contact" className="text-primary hover:underline">contact us</a>.
+                If you have any questions about this Privacy Policy, please <Link href="/contact" className="text-primary hover:underline">contact us</Link>.
               </p>
             </section>
-
-            <p className="text-xs text-muted-foreground pt-4">
-              This is a sample Privacy Policy for a simulated application. For a real application, we will consult with a legal professional.
-            </p>
           </CardContent>
         </Card>
       </div>
     </div>
   );
 }
-
