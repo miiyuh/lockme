@@ -7,22 +7,23 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Code, PlusCircle, Trash2, Copy, Lock, Unlock, Eye, EyeOff, ListCollapse, RefreshCw, Search, Tag, Filter } from 'lucide-react';
+import { Code, PlusCircle, Trash2, Copy, Lock, Unlock, Eye, EyeOff, ListCollapse, RefreshCw, Search, Tag, Filter, UserCog } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { logActivityAction } from '@/app/actions';
-import { addSnippetToFirestore, getSnippetsFromFirestore, updateSnippetInFirestore, deleteSnippetFromFirestore } from '@/lib/services/firestoreService';
+import { addSnippetToFirestore, getSnippetsFromFirestore, updateSnippetInFirestore, deleteSnippetFromFirestore, addActivity } from '@/lib/services/firestoreService'; // Import addActivity
 import type { SnippetDocument } from '@/types/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Timestamp, deleteField }from 'firebase/firestore';
 import { Badge } from '@/components/ui/badge';
-
+import { useAuth } from '@/contexts/AuthContext';
+import Link from 'next/link';
+import { useActivity } from '@/contexts/ActivityContext';
 
 
 interface ClientSnippet extends Omit<SnippetDocument, 'createdAt' | 'updatedAt'> {
   id: string;
-  createdAt?: Date | Timestamp; 
+  createdAt?: Date | Timestamp;
   updatedAt?: Date | Timestamp;
-  tags: string[]; // Ensure tags is always present and an array
+  tags: string[];
 }
 
 
@@ -45,10 +46,12 @@ const languageOptions = [
 
 
 export default function CodeSnippetsPage() {
+  const { user, loading: authLoading } = useAuth();
+  const { triggerActivityRefresh } = useActivity();
   const [snippets, setSnippets] = useState<ClientSnippet[]>([]);
   const [isLoadingSnippets, setIsLoadingSnippets] = useState(true);
   const [newSnippetName, setNewSnippetName] = useState('');
-  const [newSnippetLang, setNewSnippetLang] = useState(''); 
+  const [newSnippetLang, setNewSnippetLang] = useState('');
   const [newSnippetCode, setNewSnippetCode] = useState('');
   const [newSnippetTags, setNewSnippetTags] = useState('');
   const [passphrase, setPassphrase] = useState('');
@@ -58,27 +61,37 @@ export default function CodeSnippetsPage() {
   const { toast } = useToast();
 
   const fetchSnippets = useCallback(async () => {
+    if (!user) {
+      setSnippets([]);
+      setIsLoadingSnippets(false);
+      return;
+    }
     setIsLoadingSnippets(true);
     try {
-      const firestoreSnippets = await getSnippetsFromFirestore();
+      const firestoreSnippets = await getSnippetsFromFirestore(user.uid, true); // Fetch from server
       const clientSnippets = firestoreSnippets.map(s => ({
         ...s,
-        id: s.id!, 
-        tags: s.tags || [], // Ensure tags is an array
+        id: s.id!,
+        tags: s.tags || [],
       }));
       setSnippets(clientSnippets);
     } catch (error) {
       console.error("Failed to load snippets from Firestore:", error);
-      toast({ title: "Error Loading Snippets", description: "Could not load snippets from the database.", variant: "destructive" });
+      toast({ title: "Error Loading Snippets", description: "Could not load your snippets.", variant: "destructive" });
       setSnippets([]);
     } finally {
       setIsLoadingSnippets(false);
     }
-  }, [toast]);
+  }, [toast, user]);
 
   useEffect(() => {
-    fetchSnippets();
-  }, [fetchSnippets]);
+    if (!authLoading && user) {
+      fetchSnippets();
+    } else if (!authLoading && !user) {
+      setIsLoadingSnippets(false);
+      setSnippets([]);
+    }
+  }, [fetchSnippets, authLoading, user]);
 
   const allTags = useMemo(() => {
     const tagsSet = new Set<string>();
@@ -90,31 +103,35 @@ export default function CodeSnippetsPage() {
 
   const filteredSnippets = useMemo(() => {
     return snippets.filter(snippet => {
-      const matchesSearchTerm = 
+      const matchesSearchTerm =
         snippet.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         snippet.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (snippet.tags || []).some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
-      
+
       const matchesTagFilter = selectedTagFilter ? (snippet.tags || []).includes(selectedTagFilter) : true;
-      
+
       return matchesSearchTerm && matchesTagFilter;
     });
   }, [snippets, searchTerm, selectedTagFilter]);
 
 
   const addSnippet = async () => {
+    if (!user || !user.uid) {
+      toast({ title: "Not Authenticated", description: "You must be logged in to add snippets.", variant: "destructive" });
+      return;
+    }
     if (!newSnippetName.trim() || !newSnippetCode.trim()) {
       toast({ title: "Error", description: "Snippet name and code cannot be empty.", variant: "destructive" });
       return;
     }
-    if (!newSnippetLang) { 
+    if (!newSnippetLang) {
       toast({ title: "Error", description: "Please select a language for the snippet.", variant: "destructive" });
       return;
     }
-    
+
     const tagsArray = newSnippetTags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
 
-    const snippetData: Omit<SnippetDocument, 'id' | 'createdAt' | 'updatedAt'> = {
+    const snippetData: Omit<SnippetDocument, 'id' | 'createdAt' | 'updatedAt' | 'userId'> = {
       name: newSnippetName,
       language: newSnippetLang,
       code: newSnippetCode,
@@ -123,36 +140,39 @@ export default function CodeSnippetsPage() {
     };
 
     try {
-      const newId = await addSnippetToFirestore(snippetData);
+      const newId = await addSnippetToFirestore(snippetData, user.uid);
       if (newId) {
-        await logActivityAction("snippet_created", `Created snippet: ${newSnippetName}`, { snippetName: newSnippetName });
+        await addActivity("snippet_created", `Created snippet: ${newSnippetName}`, { snippetName: newSnippetName, userId: user.uid });
+        triggerActivityRefresh();
         setNewSnippetName('');
         setNewSnippetCode('');
-        setNewSnippetLang(''); 
+        setNewSnippetLang('');
         setNewSnippetTags('');
-        toast({ title: "Snippet Added", description: `'${newSnippetName}' has been added to Firestore.` });
-        fetchSnippets(); 
+        toast({ title: "Snippet Added", description: `'${newSnippetName}' has been added.` });
+        fetchSnippets();
       } else {
         throw new Error("Failed to get new snippet ID.");
       }
     } catch (error) {
-        console.error("Failed to add snippet to Firestore:", error);
-        toast({ title: "Error Adding Snippet", description: "Could not save the snippet to the database.", variant: "destructive" });
+        console.error("Failed to add snippet:", error);
+        toast({ title: "Error Adding Snippet", description: "Could not save the snippet.", variant: "destructive" });
     }
   };
 
   const deleteSnippet = async (id: string) => {
+    if (!user || !user.uid) return;
     const snippetToDelete = snippets.find(s => s.id === id);
     if (!snippetToDelete) return;
 
     try {
       await deleteSnippetFromFirestore(id);
-      await logActivityAction("snippet_deleted", `Deleted snippet: ${snippetToDelete.name}`, { snippetName: snippetToDelete.name });
-      toast({ title: "Snippet Deleted", description: `'${snippetToDelete.name}' has been removed from Firestore.` });
-      fetchSnippets(); 
+      await addActivity("snippet_deleted", `Deleted snippet: ${snippetToDelete.name}`, { snippetName: snippetToDelete.name, userId: user.uid });
+      triggerActivityRefresh();
+      toast({ title: "Snippet Deleted", description: `'${snippetToDelete.name}' has been removed.` });
+      fetchSnippets();
     } catch (error) {
-      console.error("Failed to delete snippet from Firestore:", error);
-      toast({ title: "Error Deleting Snippet", description: "Could not remove the snippet from the database.", variant: "destructive" });
+      console.error("Failed to delete snippet:", error);
+      toast({ title: "Error Deleting Snippet", description: "Could not remove the snippet.", variant: "destructive" });
     }
   };
 
@@ -176,6 +196,7 @@ export default function CodeSnippetsPage() {
   };
 
   const encryptSnippet = async (id: string) => {
+    if (!user || !user.uid) return;
     const snippet = snippets.find(s => s.id === id);
     if (!snippet || snippet.isEncrypted) return;
     if (!passphrase.trim()) {
@@ -188,26 +209,28 @@ export default function CodeSnippetsPage() {
       const iv = window.crypto.getRandomValues(new Uint8Array(IV_LENGTH));
       const encodedCode = new TextEncoder().encode(snippet.code);
       const encryptedCodeBuffer = await window.crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encodedCode);
-      
+
       const encryptedCode = btoa(String.fromCharCode(...new Uint8Array(encryptedCodeBuffer)));
       const saltString = btoa(String.fromCharCode(...salt));
       const ivString = btoa(String.fromCharCode(...iv));
 
-      const updates: Partial<Omit<SnippetDocument, 'id' | 'createdAt'>> = {
+      const updates: Partial<Omit<SnippetDocument, 'id' | 'createdAt' | 'userId'>> = {
         code: encryptedCode,
         isEncrypted: true,
         iv: ivString,
         salt: saltString,
       };
       await updateSnippetInFirestore(id, updates);
-      toast({ title: "Snippet Encrypted", description: `'${snippet.name}' is now encrypted in Firestore.` });
-      fetchSnippets(); 
+      await addActivity("snippet_updated", `Encrypted snippet: ${snippet.name}`, { snippetName: snippet.name, userId: user.uid });
+      triggerActivityRefresh();
+      toast({ title: "Snippet Encrypted", description: `'${snippet.name}' is now encrypted.` });
+      fetchSnippets();
     } catch (error) {
       console.error("Encryption error:", error);
       toast({ title: "Encryption Failed", description: (error as Error).message, variant: "destructive" });
     }
   };
-  
+
   const arrayBufferFromBase64 = (base64: string) => {
     const binary_string = window.atob(base64);
     const len = binary_string.length;
@@ -219,6 +242,7 @@ export default function CodeSnippetsPage() {
   }
 
   const decryptSnippet = async (id: string) => {
+    if (!user || !user.uid) return;
     const snippet = snippets.find(s => s.id === id);
     if (!snippet || !snippet.isEncrypted || !snippet.iv || !snippet.salt) return;
      if (!passphrase.trim()) {
@@ -231,24 +255,54 @@ export default function CodeSnippetsPage() {
       const [key] = await getKeyMaterial(passphrase, saltBytes);
       const ivBytes = new Uint8Array(arrayBufferFromBase64(snippet.iv));
       const encryptedCodeBuffer = arrayBufferFromBase64(snippet.code);
-      
+
       const decryptedCodeBuffer = await window.crypto.subtle.decrypt({ name: 'AES-GCM', iv: ivBytes }, key, encryptedCodeBuffer);
       const decryptedCode = new TextDecoder().decode(decryptedCodeBuffer);
 
-      const updates: Partial<Omit<SnippetDocument, 'id' | 'createdAt'>> = {
+      const updates: Partial<Omit<SnippetDocument, 'id' | 'createdAt' | 'userId'>> = {
         code: decryptedCode,
         isEncrypted: false,
-        iv: deleteField(), 
-        salt: deleteField(),
+        iv: deleteField() as unknown as string,
+        salt: deleteField() as unknown as string,
       };
       await updateSnippetInFirestore(id, updates);
-      toast({ title: "Snippet Decrypted", description: `'${snippet.name}' is now decrypted in Firestore.` });
-      fetchSnippets(); 
+      await addActivity("snippet_updated", `Decrypted snippet: ${snippet.name}`, { snippetName: snippet.name, userId: user.uid });
+      triggerActivityRefresh();
+      toast({ title: "Snippet Decrypted", description: `'${snippet.name}' is now decrypted.` });
+      fetchSnippets();
     } catch (error) {
       console.error("Decryption error:", error);
       toast({ title: "Decryption Failed", description: "Incorrect passphrase or corrupted data.", variant: "destructive" });
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="container mx-auto py-8">
+        <div className="max-w-4xl mx-auto">
+          <Skeleton className="h-24 w-full mb-8" />
+          <Skeleton className="h-64 w-full" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="container mx-auto py-8">
+        <div className="max-w-2xl mx-auto text-center">
+          <UserCog className="mx-auto h-16 w-16 text-primary mb-6" />
+          <h1 className="text-2xl font-semibold mb-4">Access Denied</h1>
+          <p className="text-muted-foreground mb-6">
+            You need to be logged in to manage your code snippets.
+          </p>
+          <Button asChild>
+            <Link href="/login">Login to Continue</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
 
   return (
@@ -258,21 +312,21 @@ export default function CodeSnippetsPage() {
           <CardHeader>
             <CardTitle className="flex items-center text-2xl">
               <Code className="mr-2 h-6 w-6 text-primary" />
-              Code Snippet Manager
+              My Code Snippets
             </CardTitle>
             <CardDescription>
-              Store, manage, and optionally encrypt your code snippets. Snippets are saved to Firestore.
+              Store, manage, and optionally encrypt your code snippets. Snippets are saved to your account.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div>
               <Label htmlFor="passphrase">Encryption Passphrase</Label>
               <div className="flex items-center gap-2">
-                <Input 
-                  id="passphrase" 
-                  type={showPassphrase ? "text" : "password"} 
-                  value={passphrase} 
-                  onChange={(e) => setPassphrase(e.target.value)} 
+                <Input
+                  id="passphrase"
+                  type={showPassphrase ? "text" : "password"}
+                  value={passphrase}
+                  onChange={(e) => setPassphrase(e.target.value)}
                   placeholder="Enter passphrase for encryption/decryption"
                   className="flex-grow"
                 />
@@ -324,9 +378,9 @@ export default function CodeSnippetsPage() {
             <div className="flex items-center gap-2 w-full md:w-auto">
                 <div className="relative flex-grow">
                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                        type="search" 
-                        placeholder="Search snippets..." 
+                    <Input
+                        type="search"
+                        placeholder="Search snippets..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="pl-8 w-full"

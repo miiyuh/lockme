@@ -2,8 +2,8 @@
 "use client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import DashboardStatsCard from '@/components/DashboardStatsCard';
-import { FileLock, FileUp, KeyRound, ListChecks, Sparkles, MessageSquareQuote, MessageCircleQuestion, Wand2, ShieldCheck, ShieldOff } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { FileLock, FileUp, KeyRound, ListChecks, Sparkles, MessageSquareQuote, MessageCircleQuestion, Wand2, ShieldCheck, ShieldOff, Activity as LucideActivity } from 'lucide-react';
+import { useEffect, useState, useCallback } from 'react';
 import { getRecentActivities } from '@/lib/services/firestoreService';
 import type { Activity as ActivityType } from '@/types/firestore';
 import { formatDistanceToNow } from 'date-fns';
@@ -11,24 +11,54 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { useAuth } from '@/contexts/AuthContext';
+import { useActivity } from '@/contexts/ActivityContext'; // Import useActivity
 
 export default function DashboardPage() {
+  const { user, loading: authLoading } = useAuth();
+  const { lastActivityTimestamp } = useActivity(); // Consume lastActivityTimestamp
   const [displayedActivities, setDisplayedActivities] = useState<ActivityType[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   
-  // State for dashboard statistics
   const [filesEncrypted, setFilesEncrypted] = useState(0);
   const [filesDecrypted, setFilesDecrypted] = useState(0);
   const [passphrasesGenerated, setPassphrasesGenerated] = useState(0);
   const [totalOperations, setTotalOperations] = useState(0);
 
   useEffect(() => {
-    async function fetchDashboardData() {
+    const performFetch = async () => {
+      if (authLoading) {
+        console.log("DashboardPage: Auth is loading, skipping fetch.");
+        setLoadingData(true); 
+        return;
+      }
+
+      if (!user) {
+        console.log("DashboardPage: No user logged in, resetting stats and activities.");
+        setFilesEncrypted(0);
+        setFilesDecrypted(0);
+        setPassphrasesGenerated(0);
+        setTotalOperations(0);
+        setDisplayedActivities([]);
+        setLoadingData(false);
+        return;
+      }
+      
       setLoadingData(true);
+      const currentUserId = user?.uid;
+      console.log("DashboardPage: performFetch called. Authenticated User ID:", currentUserId, "Last Activity Timestamp:", lastActivityTimestamp);
+
+      if (!currentUserId) {
+        console.warn("DashboardPage: User object present, but UID is missing. This shouldn't happen if user is authenticated.");
+        setLoadingData(false);
+        return;
+      }
+
       try {
-        // Fetch all activities for statistics calculation
-        // Pass no argument to getRecentActivities to fetch all activities
-        const allActivitiesForStats = await getRecentActivities(); 
+        console.log(`DashboardPage: Fetching all activities for stats for userId: ${currentUserId}`);
+        const allUserActivities = await getRecentActivities(currentUserId, undefined, true); 
+        console.log("DashboardPage: All user activities fetched for stats (first 5):", JSON.stringify(allUserActivities.slice(0,5).map(a => ({id: a.id, type: a.type, userId: a.userId, description: a.description }))));
+        console.log(`DashboardPage: Total ${allUserActivities.length} activities fetched for stats for user ${currentUserId}`);
 
         let encryptedCount = 0;
         let decryptedCount = 0;
@@ -38,7 +68,7 @@ export default function DashboardPage() {
         let snippetUpdatedCount = 0;
         let snippetDeletedCount = 0;
 
-        allActivitiesForStats.forEach(act => {
+        allUserActivities.forEach(act => {
           if (act.type === 'encrypt') encryptedCount++;
           else if (act.type === 'decrypt') decryptedCount++;
           else if (act.type === 'generate_passphrase') passphraseCount++;
@@ -47,33 +77,43 @@ export default function DashboardPage() {
           else if (act.type === 'snippet_updated') snippetUpdatedCount++;
           else if (act.type === 'snippet_deleted') snippetDeletedCount++;
         });
-
-        setFilesEncrypted(encryptedCount);
-        setFilesDecrypted(decryptedCount);
-        setPassphrasesGenerated(passphraseCount);
-        setTotalOperations(
-            encryptedCount + 
+        
+        const newTotalOperations = encryptedCount + 
             decryptedCount + 
             passphraseCount + 
             enhancedPromptCount +
             snippetCreatedCount +
             snippetUpdatedCount +
-            snippetDeletedCount
-        );
+            snippetDeletedCount;
 
-        // Fetch last 10 activities for the display log
-        const recentActivitiesForLog = await getRecentActivities(10);
-        setDisplayedActivities(recentActivitiesForLog);
+        console.log("DashboardPage: Calculated stats - Encrypted:", encryptedCount, "Decrypted:", decryptedCount, "Passphrases:", passphraseCount, "Total Ops:", newTotalOperations);
+
+        setFilesEncrypted(encryptedCount);
+        setFilesDecrypted(decryptedCount);
+        setPassphrasesGenerated(passphraseCount);
+        setTotalOperations(newTotalOperations);
+
+        console.log(`DashboardPage: Fetching recent 10 activities for log for userId: ${currentUserId}`);
+        const recentUserActivitiesForLog = await getRecentActivities(currentUserId, 10, true); 
+        console.log("DashboardPage: Recent activities fetched for log (first 5):", JSON.stringify(recentUserActivitiesForLog.slice(0,5).map(a => ({id: a.id, type: a.type, userId: a.userId, description: a.description }))));
+        setDisplayedActivities(recentUserActivitiesForLog);
 
       } catch (error) {
-        console.error("Failed to fetch dashboard data:", error);
-        // Potentially set an error state here to inform the user
+        console.error("DashboardPage: Failed to fetch dashboard data:", error);
+        setFilesEncrypted(0);
+        setFilesDecrypted(0);
+        setPassphrasesGenerated(0);
+        setTotalOperations(0);
+        setDisplayedActivities([]);
       } finally {
         setLoadingData(false);
+        console.log("DashboardPage: performFetch finished.");
       }
-    }
-    fetchDashboardData();
-  }, []);
+    };
+
+    console.log("DashboardPage: useEffect triggered. User:", user ? user.uid : null, "AuthLoading:", authLoading, "lastActivityTimestamp:", lastActivityTimestamp);
+    performFetch();
+  }, [user, authLoading, lastActivityTimestamp]); 
 
 
   const getIconForActivity = (type: ActivityType['type']) => {
@@ -90,12 +130,55 @@ export default function DashboardPage() {
     }
   };
 
+  if (authLoading || (!user && !authLoading)) { 
+    return (
+      <div className="container mx-auto py-8">
+        <div className="mb-8">
+          <Skeleton className="h-10 w-3/4 mb-2" />
+          <Skeleton className="h-4 w-1/2" />
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
+          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-48 rounded-lg" />)}
+        </div>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-12">
+           {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-24 rounded-lg" />)}
+        </div>
+        <Skeleton className="h-72 rounded-lg" />
+        {!user && !authLoading && (
+            <div className="text-center mt-8">
+                <p className="text-lg text-muted-foreground">Please <Link href="/login" className="text-primary hover:underline">log in</Link> to view your dashboard.</p>
+            </div>
+        )}
+      </div>
+    );
+  }
+  
+  if (loadingData && user) { 
+     return (
+      <div className="container mx-auto py-8">
+        <div className="mb-8">
+          <Skeleton className="h-10 w-3/4 mb-2" />
+          <Skeleton className="h-4 w-1/2" />
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
+          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-48 rounded-lg" />)}
+        </div>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-12">
+           {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-24 rounded-lg" />)}
+        </div>
+        <Skeleton className="h-72 rounded-lg" />
+      </div>
+    );
+  }
+
 
   return (
     <div className="container mx-auto py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight text-foreground">Dashboard</h1>
-        <p className="text-muted-foreground">Overview of your LockMe activity and quick actions.</p>
+        <p className="text-muted-foreground">
+          {user ? `Overview of your LockMe activity, ${user.displayName || user.email}.` : "Log in to see your activity."}
+        </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
@@ -172,40 +255,34 @@ export default function DashboardPage() {
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-12">
         <DashboardStatsCard
           title="Files Encrypted"
-          value={loadingData ? <Skeleton className="h-6 w-12" /> : filesEncrypted.toString()}
-          description="Total files secured"
+          value={filesEncrypted.toString()}
+          description="Your secured files"
         />
         <DashboardStatsCard
           title="Files Decrypted"
-          value={loadingData ? <Skeleton className="h-6 w-12" /> : filesDecrypted.toString()}
-          description="Total files accessed"
+          value={filesDecrypted.toString()}
+          description="Your accessed files"
         />
         <DashboardStatsCard
           title="Passphrases Generated"
-          value={loadingData ? <Skeleton className="h-6 w-12" /> : passphrasesGenerated.toString()}
-          description="Using AI Toolkit"
+          value={passphrasesGenerated.toString()}
+          description="Via AI Toolkit"
         />
         <DashboardStatsCard
           title="Total Operations"
-          value={loadingData ? <Skeleton className="h-6 w-12" /> : totalOperations.toString()}
-          description="All encrypt, decrypt, generate, enhance, and snippet operations"
+          value={totalOperations.toString()}
+          description="Your encrypt, decrypt, generate, enhance, and snippet operations"
         />
       </div>
       
       <div className="grid grid-cols-1 gap-8">
         <Card className="shadow-lg">
           <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
+            <CardTitle>Your Recent Activity</CardTitle>
             <CardDescription>A log of your last 10 operations.</CardDescription>
           </CardHeader>
           <CardContent>
-            {loadingData ? (
-              <div className="space-y-4">
-                {[...Array(5)].map((_, i) => (
-                  <Skeleton key={i} className="h-8 w-full rounded" />
-                ))}
-              </div>
-            ) : displayedActivities.length > 0 ? (
+            {displayedActivities.length > 0 ? (
               <ScrollArea className="h-72">
                 <ul className="space-y-3">
                   {displayedActivities.map((activity) => (
@@ -224,11 +301,13 @@ export default function DashboardPage() {
                 </ul>
               </ScrollArea>
             ) : (
-              <p className="text-sm text-muted-foreground text-center py-4">No recent activity to display. Start using LockMe!</p>
+              <p className="text-sm text-muted-foreground text-center py-4">
+                {user ? "No recent activity to display. Start using LockMe!" : "Log in to see your activity."}
+              </p>
             )}
-             {!loadingData && displayedActivities.length > 0 && (
+             {displayedActivities.length > 0 && (
                 <p className="mt-4 text-xs text-muted-foreground">
-                  Showing last {displayedActivities.length} activities.
+                  Showing your last {displayedActivities.length} activities.
                 </p>
             )}
           </CardContent>

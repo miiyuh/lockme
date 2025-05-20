@@ -4,12 +4,13 @@ import { JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { ThemeProvider } from '@/components/ThemeProvider';
-import { AuthProvider } from '../contexts/AuthContext'; // Added
+import { AuthProvider } from '@/contexts/AuthContext';
+import { ActivityProvider } from '@/contexts/ActivityContext'; // Ensure this import is correct
 
-const jetbrainsMono = JetBrains_Mono({ 
-  subsets: ['latin'], 
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
-  variable: '--font-jetbrains-mono' 
+  variable: '--font-jetbrains-mono'
 });
 
 export const metadata: Metadata = {
@@ -31,8 +32,10 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <AuthProvider> {/* Added AuthProvider */}
-            {children}
+          <AuthProvider>
+            <ActivityProvider> {/* This is the key placement */}
+              {children}
+            </ActivityProvider>
           </AuthProvider>
           <Toaster />
         </ThemeProvider>

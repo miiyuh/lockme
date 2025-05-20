@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 "use client";
 
@@ -17,9 +18,12 @@ import { useToast } from '@/hooks/use-toast';
 import { ShieldCheck, ShieldOff, Loader2, KeyRound, Download, Lock, Unlock, Eye, EyeOff, Info, Share2, Copy, AlertTriangle, FileText, SparklesIcon, XCircle } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { logActivityAction, handleAnalyzePassphraseStrengthAction } from '@/app/actions';
+import { handleAnalyzePassphraseStrengthAction } from '@/app/actions';
+import { addActivity } from '@/lib/services/firestoreService'; // Import addActivity directly
+import { useActivity } from '@/contexts/ActivityContext'; // Import useActivity
 import type { AnalyzePassphraseStrengthOutput } from '@/ai/flows/analyze-passphrase-strength';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
 
 const SALT_LENGTH = 16; // bytes
 const IV_LENGTH = 12; // bytes for AES-GCM
@@ -62,6 +66,8 @@ const checkPasswordStrength = (password: string): PasswordStrength => {
 
 
 const FileEncryptionCard: FC<FileEncryptionCardProps> = ({ mode }) => {
+  const { user } = useAuth();
+  const { triggerActivityRefresh } = useActivity();
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [progress, setProgress] = useState(0);
   const [currentFileProgress, setCurrentFileProgress] = useState(0);
@@ -81,7 +87,7 @@ const FileEncryptionCard: FC<FileEncryptionCardProps> = ({ mode }) => {
     defaultValues: {
       passphrase: '',
     },
-    mode: 'onChange', 
+    mode: 'onChange',
   });
 
   const handleFileDrop = (files: File[]) => {
@@ -132,7 +138,7 @@ const FileEncryptionCard: FC<FileEncryptionCardProps> = ({ mode }) => {
     setCurrentFileProgress(0);
     if (validFiles.length > 0) {
         toast({ title: "Files Selected", description: `${validFiles.length} file(s) ready for ${mode}.` });
-    } else if (files.length > 0) { 
+    } else if (files.length > 0) {
         toast({ title: "No Valid Files Selected", description: "Please check file size and type requirements.", variant: "destructive" });
     }
     setPasswordStrength(null);
@@ -176,7 +182,7 @@ const FileEncryptionCard: FC<FileEncryptionCardProps> = ({ mode }) => {
         iv = new Uint8Array(fileBuffer.slice(SALT_LENGTH, SALT_LENGTH + IV_LENGTH));
         dataToProcess = fileBuffer.slice(SALT_LENGTH + IV_LENGTH);
         onProgress(25);
-      } else { 
+      } else {
         iv = window.crypto.getRandomValues(new Uint8Array(IV_LENGTH));
         dataToProcess = fileBuffer;
         onProgress(30);
@@ -205,7 +211,7 @@ const FileEncryptionCard: FC<FileEncryptionCardProps> = ({ mode }) => {
         encryptedFileContent.set(new Uint8Array(resultBuffer), salt!.length + iv!.length);
         onProgress(90);
         return new Blob([encryptedFileContent], { type: 'application/octet-stream' });
-      } else { 
+      } else {
          let blobType = 'application/octet-stream';
         const originalFileName = file.name.endsWith('.lockme') ? file.name.slice(0, -'.lockme'.length) : `decrypted_${file.name}`;
         const extension = originalFileName.split('.').pop()?.toLowerCase();
@@ -223,7 +229,7 @@ const FileEncryptionCard: FC<FileEncryptionCardProps> = ({ mode }) => {
         description: (error as Error).message || `An unexpected error occurred during ${operation}.`,
         variant: "destructive",
       });
-      onProgress(100); 
+      onProgress(100);
       return null;
     }
   };
@@ -258,15 +264,27 @@ const FileEncryptionCard: FC<FileEncryptionCardProps> = ({ mode }) => {
             : `decrypted_${file.name}`;
         }
         triggerDownload(processedBlob, downloadFileName);
-        try {
-          await logActivityAction(mode, `${mode.charAt(0).toUpperCase() + mode.slice(1)}ed file: ${file.name}`, { fileName: file.name });
-        } catch (logError) {
-          console.error(`Failed to log activity for ${file.name}:`, logError);
-          toast({
-            title: "Activity Logging Failed",
-            description: `Could not record this ${mode} activity for ${file.name}. Error: ${(logError as Error).message}`,
-            variant: "warning",
-          });
+        if (user?.uid) {
+          try {
+            console.log(`FileEncryptionCard: Attempting to log ${mode} activity for userId: ${user.uid}, file: ${file.name}`);
+            await addActivity(mode, `${mode.charAt(0).toUpperCase() + mode.slice(1)}ed file: ${file.name}`, { fileName: file.name, userId: user.uid });
+            console.log(`FileEncryptionCard: Successfully logged ${mode} activity for userId: ${user.uid}, file: ${file.name}`);
+            triggerActivityRefresh();
+          } catch (logError) {
+            console.error(`FileEncryptionCard: Failed to log ${mode} activity for userId ${user.uid}, file ${file.name}:`, logError);
+            toast({
+              title: "Activity Logging Failed",
+              description: `Could not record this ${mode} activity for ${file.name}. Error: ${(logError as Error).message}`,
+              variant: "warning",
+            });
+            // Still call triggerActivityRefresh if local state might have changed (e.g., lastEncryptedDetails)
+            // or if other UI elements should update even if logging fails for one file.
+            triggerActivityRefresh();
+          }
+        } else {
+           console.warn(`FileEncryptionCard: User not logged in or UID not available. ${mode} activity for ${file.name} will not be logged.`);
+           // Potentially still refresh if local UI relies on it, e.g. for lastEncryptedDetails
+           triggerActivityRefresh();
         }
       } else {
         allSuccessful = false;
@@ -297,18 +315,18 @@ const FileEncryptionCard: FC<FileEncryptionCardProps> = ({ mode }) => {
       setAiPasswordStrength(null);
       return;
     }
-    setAiPasswordStrength(prev => ({ ...prev, isLoading: true }));
+    setAiPasswordStrength(prev => ({ ...prev, isLoading: true, feedback: 'Analyzing...', suggestions: [] }));
     try {
       const result = await handleAnalyzePassphraseStrengthAction({ passphrase });
       setAiPasswordStrength({ ...result, isLoading: false });
     } catch (error) {
       console.warn("AI strength analysis failed:", error);
-      setAiPasswordStrength(prev => ({ ...prev, isLoading: false, suggestions: [], feedback: "AI analysis currently unavailable." }));
+      setAiPasswordStrength({ strengthLevel: 0, feedback: "AI analysis currently unavailable.", suggestions: [], isLoading: false });
     }
   }, []);
-  
+
   const handlePassphraseSideEffects = (currentPassphraseValue: string) => {
-    if (mode === 'encrypt') { // Only show strength indicators in encrypt mode
+    if (mode === 'encrypt') {
       setPasswordStrength(checkPasswordStrength(currentPassphraseValue));
 
       if (aiAnalysisTimeoutRef.current) {
@@ -343,7 +361,7 @@ const FileEncryptionCard: FC<FileEncryptionCardProps> = ({ mode }) => {
         clearTimeout(aiAnalysisTimeoutRef.current);
       }
     };
-  }, []); 
+  }, []);
 
   const cardTitle = mode === 'encrypt' ? "Encrypt Your File(s)" : "Decrypt Your File(s)";
   const cardDescription = mode === 'encrypt'
@@ -446,14 +464,14 @@ const FileEncryptionCard: FC<FileEncryptionCardProps> = ({ mode }) => {
                         <Input
                           type={showPassword ? "text" : "password"}
                           placeholder="Enter your secure passphrase"
-                          {...field} 
-                          ref={(instance) => {
-                            field.ref(instance); 
-                            passphraseInputRef.current = instance; 
+                          {...field}
+                          ref={(e) => {
+                            field.ref(e); // For react-hook-form
+                            passphraseInputRef.current = e; // For your custom ref
                           }}
                           onChange={(e) => {
-                            field.onChange(e); 
-                            handlePassphraseSideEffects(e.target.value); 
+                            field.onChange(e); // Update react-hook-form state
+                            handlePassphraseSideEffects(e.target.value); // Handle strength indicators etc.
                           }}
                           className="pr-10"
                         />
