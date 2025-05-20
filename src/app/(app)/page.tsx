@@ -2,9 +2,9 @@
 "use client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import DashboardStatsCard from '@/components/DashboardStatsCard';
-import { FileLock, FileUp, KeyRound, ListChecks, Sparkles, MessageSquareQuote, MessageCircleQuestion, Wand2, ShieldCheck, ShieldOff, LucideActivity, FileInput, FileOutput, Activity, FolderLock, ListTree, Brain } from 'lucide-react'; // Added Activity, FolderLock, ListTree, Brain
-import { useEffect, useState, useCallback } from 'react';
-import { getRecentActivities } from '@/lib/services/firestoreService';
+import { FileLock, FileUp, KeyRound, ListChecks, Sparkles, Brain, ListTree, LucideActivity, FileInput, FileOutput, Activity, FolderLock } from 'lucide-react'; // Updated imports
+import { useEffect, useState } from 'react';
+import { getRecentActivities, addActivity } from '@/lib/services/firestoreService'; // Assuming addActivity exists
 import type { Activity as ActivityType } from '@/types/firestore';
 import { formatDistanceToNow } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -16,10 +16,10 @@ import { useActivity } from '@/contexts/ActivityContext';
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
-  const { lastActivityTimestamp } = useActivity();
+  const { lastActivityTimestamp, triggerActivityRefresh } = useActivity();
   const [displayedActivities, setDisplayedActivities] = useState<ActivityType[]>([]);
   const [loadingData, setLoadingData] = useState(true);
-  
+
   const [filesEncrypted, setFilesEncrypted] = useState(0);
   const [filesDecrypted, setFilesDecrypted] = useState(0);
   const [passphrasesGenerated, setPassphrasesGenerated] = useState(0);
@@ -29,7 +29,7 @@ export default function DashboardPage() {
     const performFetch = async () => {
       if (authLoading) {
         console.log("DashboardPage: Auth is loading, skipping fetch.");
-        setLoadingData(true); 
+        setLoadingData(true);
         return;
       }
 
@@ -43,7 +43,7 @@ export default function DashboardPage() {
         setLoadingData(false);
         return;
       }
-      
+
       setLoadingData(true);
       const currentUserId = user?.uid;
       console.log("DashboardPage: performFetch called. Authenticated User ID:", currentUserId, "Last Activity Timestamp:", lastActivityTimestamp);
@@ -56,8 +56,8 @@ export default function DashboardPage() {
 
       try {
         console.log(`DashboardPage: Fetching all activities for stats for userId: ${currentUserId}`);
-        const allUserActivities = await getRecentActivities(currentUserId, undefined, true); 
-        console.log("DashboardPage: All user activities fetched for stats (first 5):", JSON.stringify(allUserActivities.slice(0,5).map(a => ({id: a.id, type: a.type, userId: a.userId, description: a.description }))));
+        const allUserActivities = await getRecentActivities(currentUserId, undefined, true);
+        console.log("DashboardPage: All user activities fetched for stats (first 5):", JSON.stringify(allUserActivities.slice(0, 5).map(a => ({ id: a.id, type: a.type, userId: a.userId, description: a.description }))));
         console.log(`DashboardPage: Total ${allUserActivities.length} activities fetched for stats for user ${currentUserId}`);
 
         let encryptedCount = 0;
@@ -77,10 +77,10 @@ export default function DashboardPage() {
           else if (act.type === 'snippet_updated') snippetUpdatedCount++;
           else if (act.type === 'snippet_deleted') snippetDeletedCount++;
         });
-        
-        const newTotalOperations = encryptedCount + 
-            decryptedCount + 
-            passphraseCount + 
+
+        const newTotalOperations = encryptedCount +
+            decryptedCount +
+            passphraseCount +
             enhancedPromptCount +
             snippetCreatedCount +
             snippetUpdatedCount +
@@ -94,8 +94,8 @@ export default function DashboardPage() {
         setTotalOperations(newTotalOperations);
 
         console.log(`DashboardPage: Fetching recent 10 activities for log for userId: ${currentUserId}`);
-        const recentUserActivitiesForLog = await getRecentActivities(currentUserId, 10, true); 
-        console.log("DashboardPage: Recent activities fetched for log (first 5):", JSON.stringify(recentUserActivitiesForLog.slice(0,5).map(a => ({id: a.id, type: a.type, userId: a.userId, description: a.description }))));
+        const recentUserActivitiesForLog = await getRecentActivities(currentUserId, 10, true);
+        console.log("DashboardPage: Recent activities fetched for log (first 5):", JSON.stringify(recentUserActivitiesForLog.slice(0, 5).map(a => ({ id: a.id, type: a.type, userId: a.userId, description: a.description }))));
         setDisplayedActivities(recentUserActivitiesForLog);
 
       } catch (error) {
@@ -113,189 +113,184 @@ export default function DashboardPage() {
 
     console.log("DashboardPage: useEffect triggered. User:", user ? user.uid : null, "AuthLoading:", authLoading, "lastActivityTimestamp:", lastActivityTimestamp);
     performFetch();
-  }, [user, authLoading, lastActivityTimestamp]); 
+  }, [user, authLoading, lastActivityTimestamp]);
 
 
   const getIconForActivity = (type: ActivityType['type']) => {
     switch (type) {
-      case 'encrypt': return <FileLock className="h-4 w-4 text-primary mr-2" />;
-      case 'decrypt': return <FileUp className="h-4 w-4 text-primary mr-2" />;
-      case 'generate_passphrase': return <KeyRound className="h-4 w-4 text-primary mr-2" />;
-      case 'enhance_prompt': return <Sparkles className="h-4 w-4 text-primary mr-2" />;
+      case 'encrypt': return <FileLock className="h-4 w-4 text-primary mr-2 shrink-0" />;
+      case 'decrypt': return <FileUp className="h-4 w-4 text-primary mr-2 shrink-0" />;
+      case 'generate_passphrase': return <KeyRound className="h-4 w-4 text-primary mr-2 shrink-0" />;
+      case 'enhance_prompt': return <Sparkles className="h-4 w-4 text-primary mr-2 shrink-0" />;
       case 'snippet_created':
       case 'snippet_updated':
       case 'snippet_deleted':
-         return <ListChecks className="h-4 w-4 text-primary mr-2" />;
-      default: return <LucideActivity className="h-4 w-4 text-muted-foreground mr-2" />;
+         return <ListChecks className="h-4 w-4 text-primary mr-2 shrink-0" />;
+      default: return <LucideActivity className="h-4 w-4 text-muted-foreground mr-2 shrink-0" />;
     }
   };
 
-  if (authLoading || (!user && !authLoading)) { 
+  if (authLoading || (!user && !authLoading)) {
     return (
-      <div className="container mx-auto py-8">
-        <div className="mb-8">
-          <Skeleton className="h-10 w-3/4 mb-2" />
+      <div className="container mx-auto py-6 sm:py-8 px-4">
+        <div className="mb-6 sm:mb-8">
+          <Skeleton className="h-8 sm:h-10 w-3/4 mb-2" />
           <Skeleton className="h-4 w-1/2" />
         </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
-          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-48 rounded-lg" />)}
+        <div className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-4 mb-6 sm:mb-8">
+          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-40 sm:h-48 rounded-lg" />)}
         </div>
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-12">
-           {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-24 rounded-lg" />)}
+        <div className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8 sm:mb-12">
+           {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-20 sm:h-24 rounded-lg" />)}
         </div>
-        <Skeleton className="h-72 rounded-lg" />
+        <Skeleton className="h-64 sm:h-72 rounded-lg" />
         {!user && !authLoading && (
-            <div className="text-center mt-8">
-                <p className="text-lg text-muted-foreground">Please <Link href="/login" className="text-primary hover:underline">log in</Link> to view your dashboard.</p>
+            <div className="text-center mt-6 sm:mt-8">
+                <p className="text-base sm:text-lg text-muted-foreground">Please <Link href="/login" className="text-primary hover:underline">log in</Link> to view your dashboard.</p>
             </div>
         )}
       </div>
     );
   }
-  
-  if (loadingData && user) { 
+
+  if (loadingData && user) {
      return (
-      <div className="container mx-auto py-8">
-        <div className="mb-8">
-          <Skeleton className="h-10 w-3/4 mb-2" />
+      <div className="container mx-auto py-6 sm:py-8 px-4">
+        <div className="mb-6 sm:mb-8">
+          <Skeleton className="h-8 sm:h-10 w-3/4 mb-2" />
           <Skeleton className="h-4 w-1/2" />
         </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
-          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-48 rounded-lg" />)}
+        <div className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-4 mb-6 sm:mb-8">
+          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-40 sm:h-48 rounded-lg" />)}
         </div>
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-12">
-           {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-24 rounded-lg" />)}
+        <div className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8 sm:mb-12">
+           {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-20 sm:h-24 rounded-lg" />)}
         </div>
-        <Skeleton className="h-72 rounded-lg" />
+        <Skeleton className="h-64 sm:h-72 rounded-lg" />
       </div>
     );
   }
 
 
   return (
-    <div className="container mx-auto py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">Dashboard</h1>
-        <p className="text-muted-foreground">
+    <div className="container mx-auto py-6 sm:py-8 px-4">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Dashboard</h1>
+        <p className="text-sm sm:text-base text-muted-foreground">
           {user ? `Overview of your LockMe activity, ${user.displayName || user.email}.` : "Log in to see your activity."}
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
+      {/* Shortcut Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
         <Card className="flex flex-col h-full shadow-lg hover:shadow-xl transition-shadow">
-          <div className="flex-grow">
-            <CardHeader>
-              <ShieldCheck className="h-8 w-8 mb-2 text-primary" />
-              <CardTitle>Encrypt File</CardTitle>
-              <CardDescription>Secure your files with strong encryption.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {/* Description removed */}
-            </CardContent>
-          </div>
+          <CardHeader className="pb-2 sm:pb-4">
+            <FolderLock className="h-8 w-8 mb-2 text-primary" />
+            <CardTitle className="text-base sm:text-lg">Encrypt File</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">Secure your files.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex-grow">
+            {/* Content removed */}
+          </CardContent>
           <CardFooter>
-            <Button asChild className="w-full">
+            <Button asChild className="w-full text-sm">
               <Link href="/encrypt">Go to Encrypt</Link>
             </Button>
           </CardFooter>
         </Card>
          <Card className="flex flex-col h-full shadow-lg hover:shadow-xl transition-shadow">
-          <div className="flex-grow">
-            <CardHeader>
-              <ShieldOff className="h-8 w-8 mb-2 text-primary" />
-              <CardTitle>Decrypt File</CardTitle>
-              <CardDescription>Access your previously encrypted files.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {/* Description removed */}
-            </CardContent>
-          </div>
+          <CardHeader className="pb-2 sm:pb-4">
+            <FileOutput className="h-8 w-8 mb-2 text-primary" />
+            <CardTitle className="text-base sm:text-lg">Decrypt File</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">Access your files.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex-grow">
+            {/* Content removed */}
+          </CardContent>
           <CardFooter>
-            <Button asChild className="w-full">
+            <Button asChild className="w-full text-sm">
               <Link href="/decrypt">Go to Decrypt</Link>
             </Button>
           </CardFooter>
         </Card>
         <Card className="flex flex-col h-full shadow-lg hover:shadow-xl transition-shadow">
-          <div className="flex-grow">
-            <CardHeader>
-              <Wand2 className="h-8 w-8 mb-2 text-primary" />
-              <CardTitle>AI Security Toolkit</CardTitle>
-              <CardDescription>Generate passphrases & enhance prompts.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {/* Description removed */}
-            </CardContent>
-          </div>
+          <CardHeader className="pb-2 sm:pb-4">
+            <Sparkles className="h-8 w-8 mb-2 text-primary" />
+            <CardTitle className="text-base sm:text-lg">AI Security Toolkit</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">Passwords & prompts.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex-grow">
+            {/* Content removed */}
+          </CardContent>
           <CardFooter>
-            <Button asChild className="w-full">
+            <Button asChild className="w-full text-sm">
               <Link href="/toolkit">Open AI Toolkit</Link>
             </Button>
           </CardFooter>
         </Card>
          <Card className="flex flex-col h-full shadow-lg hover:shadow-xl transition-shadow">
-          <div className="flex-grow">
-            <CardHeader>
-              <ListChecks className="h-8 w-8 mb-2 text-primary" />
-              <CardTitle>Code Snippet Manager</CardTitle>
-              <CardDescription>Store and manage your code snippets.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {/* Description removed */}
-            </CardContent>
-          </div>
+          <CardHeader className="pb-2 sm:pb-4">
+            <ListChecks className="h-8 w-8 mb-2 text-primary" />
+            <CardTitle className="text-base sm:text-lg">Code Snippet Manager</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">Store & manage code.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex-grow">
+            {/* Content removed */}
+          </CardContent>
           <CardFooter>
-            <Button asChild className="w-full">
+            <Button asChild className="w-full text-sm">
               <Link href="/snippets">Manage Snippets</Link>
             </Button>
           </CardFooter>
         </Card>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-12">
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-12">
         <DashboardStatsCard
           title="Files Encrypted"
           value={filesEncrypted.toString()}
-          icon={<FolderLock className="text-primary" />}
+          icon={<FileLock className="h-5 w-5" />}
           description="Your secured files"
         />
         <DashboardStatsCard
           title="Files Decrypted"
           value={filesDecrypted.toString()}
-          icon={<FileOutput className="text-primary" />}
+          icon={<FileUp className="h-5 w-5" />}
           description="Your accessed files"
         />
         <DashboardStatsCard
           title="Passphrases Generated"
           value={passphrasesGenerated.toString()}
-          icon={<Brain className="text-primary" />}
+          icon={<Brain className="h-5 w-5" />}
           description="Via AI Toolkit"
         />
         <DashboardStatsCard
           title="Total Operations"
           value={totalOperations.toString()}
-          icon={<Activity className="text-primary" />}
-          description="Your encrypt, decrypt, generate, enhance, and snippet operations"
+          icon={<Activity className="h-5 w-5" />}
+          description="All your recorded operations"
         />
       </div>
-      
-      <div className="grid grid-cols-1 gap-8">
+
+      {/* Recent Activity Card */}
+      <div className="grid grid-cols-1 gap-6 sm:gap-8">
         <Card className="shadow-lg">
           <CardHeader>
-            <CardTitle>Your Recent Activity</CardTitle>
-            <CardDescription>A log of your last 10 operations.</CardDescription>
+            <CardTitle className="text-lg sm:text-xl">Your Recent Activity</CardTitle>
+            <CardDescription className="text-sm sm:text-base">A log of your last 10 operations.</CardDescription>
           </CardHeader>
           <CardContent>
             {displayedActivities.length > 0 ? (
-              <ScrollArea className="h-72">
-                <ul className="space-y-3">
+              <ScrollArea className="h-64 sm:h-72">
+                <ul className="space-y-2 sm:space-y-3">
                   {displayedActivities.map((activity) => (
-                    <li key={activity.id} className="flex items-center text-sm text-muted-foreground border-b pb-2 last:border-b-0 last:pb-0">
+                    <li key={activity.id} className="flex items-center text-xs sm:text-sm text-muted-foreground border-b pb-1.5 sm:pb-2 last:border-b-0 last:pb-0">
                       {getIconForActivity(activity.type)}
-                      <span className="flex-grow">
+                      <span className="flex-grow truncate mr-2">
                         {activity.description}
-                        {activity.fileName && <span className="text-xs italic text-foreground/70"> ({activity.fileName})</span>}
-                         {activity.snippetName && <span className="text-xs italic text-foreground/70"> (Snippet: {activity.snippetName})</span>}
+                        {activity.fileName && <span className="text-xs italic text-foreground/70 ml-1">({activity.fileName})</span>}
+                         {activity.snippetName && <span className="text-xs italic text-foreground/70 ml-1">(Snippet: {activity.snippetName})</span>}
                       </span>
                       <span className="text-xs ml-auto whitespace-nowrap">
                         {activity.timestamp ? formatDistanceToNow(new Date(activity.timestamp.seconds * 1000 + activity.timestamp.nanoseconds / 1000000), { addSuffix: true }) : 'Just now'}
@@ -305,14 +300,14 @@ export default function DashboardPage() {
                 </ul>
               </ScrollArea>
             ) : (
-              <div className="text-center py-10">
-                <ListTree className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                <p className="text-lg text-muted-foreground mb-2">
+              <div className="text-center py-8 sm:py-10">
+                <ListTree className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mb-3 sm:mb-4" />
+                <p className="text-base sm:text-lg text-muted-foreground mb-2">
                   {user ? "No recent activity to display." : "Log in to see your activity."}
                 </p>
                 {user && (
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Start encrypting files or generating passphrases to see your activity here!
+                  <p className="text-xs sm:text-sm text-muted-foreground mb-3 sm:mb-4">
+                    Start using LockMe to see your activity here!
                   </p>
                 )}
                 {user && (
@@ -323,7 +318,7 @@ export default function DashboardPage() {
               </div>
             )}
              {displayedActivities.length > 0 && (
-                <p className="mt-4 text-xs text-muted-foreground">
+                <p className="mt-3 sm:mt-4 text-xs text-muted-foreground">
                   Showing your last {displayedActivities.length} activities.
                 </p>
             )}

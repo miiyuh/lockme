@@ -6,13 +6,13 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
-import { auth, app } from '@/lib/firebase'; // Ensure app is imported if not already for AuthContext initialization elsewhere
+import { auth } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { LogIn, Eye, EyeOff, Loader2, ArrowLeft, HelpCircle } from 'lucide-react';
+import { LogIn, Eye, EyeOff, Loader2, HelpCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function LoginPage() {
@@ -26,7 +26,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!authLoading && user) {
-      router.push('/');
+      router.push('/'); 
     }
   }, [user, authLoading, router]);
 
@@ -80,7 +80,7 @@ export default function LoginPage() {
 
   if (authLoading || (!authLoading && user)) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="flex h-screen items-center justify-center bg-background p-4">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
     );
@@ -88,37 +88,37 @@ export default function LoginPage() {
 
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center bg-background p-4 py-12 sm:px-6 lg:px-8">
-      <div className="flex w-full max-w-5xl flex-col items-center gap-10 lg:flex-row lg:gap-16">
-        {/* Branding Section */}
-        <div className="order-2 flex-1 text-center lg:order-1 lg:text-left">
+      <div className="flex w-full max-w-5xl flex-col items-center gap-8 md:gap-12 lg:flex-row lg:gap-16">
+        {/* Branding Section - order-1 makes it appear first on mobile (top) and lg (left) */}
+        <div className="order-1 flex-1 text-center lg:text-left px-4 sm:px-0">
           <Image
             src="https://lockme.my/assets/img/logo_lockme_highRESver.png"
             alt="LockMe Logo"
-            width={380}
-            height={192}
-            className="mx-auto mb-6 lg:mx-0"
+            width={320} 
+            height={160}
+            className="mx-auto mb-4 h-auto w-60 sm:w-72 lg:mx-0 lg:w-80"
             data-ai-hint="brand logo"
             priority
           />
-          <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl lg:text-4xl">
             Welcome Back to LockMe
           </h1>
-          <p className="mt-4 text-lg text-muted-foreground">
+          <p className="mt-3 text-base text-muted-foreground sm:mt-4 sm:text-lg">
             Secure your files with ease and confidence. Log in to access your dashboard and tools.
           </p>
         </div>
 
-        {/* Login Card Section */}
-        <div className="order-1 w-full max-w-md lg:order-2 lg:w-auto lg:flex-shrink-0">
-          <Card className="shadow-xl">
+        {/* Login Card Section - order-2 makes it appear second on mobile (bottom) and lg (right) */}
+        <div className="order-2 w-full max-w-md lg:w-auto lg:flex-shrink-0">
+          <Card className="shadow-xl w-full">
             <CardHeader className="text-center">
-              <LogIn className="mx-auto h-10 w-10 text-primary mb-3" />
-              <CardTitle className="text-2xl">Login to LockMe</CardTitle>
-              <CardDescription>Access your secure dashboard and tools.</CardDescription>
+              <LogIn className="mx-auto h-8 w-8 sm:h-10 sm:w-10 text-primary mb-2 sm:mb-3" />
+              <CardTitle className="text-xl sm:text-2xl">Login to LockMe</CardTitle>
+              <CardDescription className="text-sm sm:text-base">Access your secure dashboard and tools.</CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleLogin} className="space-y-6">
-                <div className="space-y-2">
+              <form onSubmit={handleLogin} className="space-y-4 sm:space-y-6">
+                <div className="space-y-1 sm:space-y-2">
                   <Label htmlFor="email">Email</Label>
                   <Input
                     id="email"
@@ -130,7 +130,7 @@ export default function LoginPage() {
                     disabled={isLoading}
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1 sm:space-y-2">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="password">Password</Label>
                     <Button
@@ -174,7 +174,7 @@ export default function LoginPage() {
                 </Button>
               </form>
             </CardContent>
-            <CardFooter className="flex flex-col items-center space-y-2">
+            <CardFooter className="flex flex-col items-center space-y-2 pt-4 sm:pt-6">
               <p className="text-sm text-muted-foreground">
                 Don't have an account?{' '}
                 <Link href="/signup" className="font-medium text-primary hover:underline">

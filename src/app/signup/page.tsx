@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification, type User } from 'firebase/auth';
+import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,16 +27,16 @@ const checkPasswordStrength = (password: string): PasswordStrength => {
   let score = 0;
   if (!password) return { level: 0, text: "Very Weak", color: "bg-destructive", width: "w-1/5" };
 
-  if (password.length >= 8) score++; else score = -5; 
+  if (password.length >= 8) score++; else score = -5;
   if (password.length >= 12) score++;
-  
+
   let distinctCharTypes = 0;
   if (/[a-z]/.test(password)) distinctCharTypes++;
   if (/[A-Z]/.test(password)) distinctCharTypes++;
   if (/\d/.test(password)) distinctCharTypes++;
   if (/[^A-Za-z0-9]/.test(password)) distinctCharTypes++;
 
-  if (score < 0) return { level: 0, text: "Very Weak", color: "bg-destructive", width: "w-1/5" }; 
+  if (score < 0) return { level: 0, text: "Very Weak", color: "bg-destructive", width: "w-1/5" };
 
   if (distinctCharTypes === 1) score += 0;
   else if (distinctCharTypes === 2) score += 1;
@@ -75,11 +75,7 @@ export default function SignupPage() {
 
   useEffect(() => {
     if (!authLoading && user) {
-      // Do not redirect immediately after signup if email verification is sent.
-      // User might be redirected after verifying email or on next login attempt.
-      // For now, let's keep the redirect to allow access to the app,
-      // but an alternative is to redirect to a "please verify your email" page.
-      router.push('/');
+      router.push('/'); 
     }
   }, [user, authLoading, router]);
 
@@ -94,7 +90,7 @@ export default function SignupPage() {
       return;
     }
     const currentStrength = checkPasswordStrength(password);
-    if (currentStrength.level < 2) { 
+    if (currentStrength.level < 2) {
         toast({
             title: "Password Too Weak",
             description: "Please choose a stronger password (Fair, Good, or Strong).",
@@ -110,19 +106,17 @@ export default function SignupPage() {
         displayName: username,
       });
 
-      // Send email verification
       if (userCredential.user) {
         await sendEmailVerification(userCredential.user);
-        toast({ 
-          title: 'Signup Successful!', 
+        toast({
+          title: 'Signup Successful!',
           description: `Welcome, ${username}! A verification email has been sent to ${email}. Please check your inbox (and spam folder) to verify your account.`,
-          duration: 7000, // Longer duration for this important message
+          duration: 7000,
         });
       } else {
-        // This case should ideally not happen if createUserWithEmailAndPassword succeeded
         toast({ title: 'Signup Successful', description: `Welcome, ${username}! Please log in.` });
       }
-      // The useEffect above will handle redirecting to '/'
+      // Redirect is handled by useEffect
     } catch (error: any) {
       console.error("Signup error:", error);
       toast({
@@ -135,48 +129,47 @@ export default function SignupPage() {
     }
   };
 
-  if (authLoading || (!authLoading && user && user.emailVerified)) { // Keep loading if user is not verified to show message
+  if (authLoading || (!authLoading && user)) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="flex h-screen items-center justify-center bg-background p-4">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
     );
   }
-  
+
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center bg-background p-4 py-12 sm:px-6 lg:px-8">
-       {/* Removed "Back to Home" button as per previous request */}
-      <div className="flex w-full max-w-5xl flex-col items-center gap-10 lg:flex-row lg:gap-16">
-        {/* Branding Section */}
-        <div className="order-2 flex-1 text-center lg:order-1 lg:text-left">
+      <div className="flex w-full max-w-5xl flex-col items-center gap-8 md:gap-12 lg:flex-row lg:gap-16">
+        {/* Branding Section - order-1 makes it appear first on mobile (top) and lg (left) */}
+        <div className="order-1 flex-1 text-center lg:text-left px-4 sm:px-0">
           <Image
             src="https://lockme.my/assets/img/logo_lockme_highRESver.png"
             alt="LockMe Logo"
-            width={380}
-            height={192}
-            className="mx-auto mb-6 lg:mx-0"
+            width={320} 
+            height={160}
+            className="mx-auto mb-4 h-auto w-60 sm:w-72 lg:mx-0 lg:w-80"
             data-ai-hint="brand logo"
             priority
           />
-          <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl lg:text-4xl">
             Create Your LockMe Account
           </h1>
-          <p className="mt-4 text-lg text-muted-foreground">
+          <p className="mt-3 text-base text-muted-foreground sm:mt-4 sm:text-lg">
             Join LockMe to securely manage your files, enhance your passphrases with AI, and organize your code snippets.
           </p>
         </div>
 
-        {/* Signup Card Section */}
-        <div className="order-1 w-full max-w-md lg:order-2 lg:w-auto lg:flex-shrink-0">
-          <Card className="shadow-xl">
+        {/* Signup Card Section - order-2 makes it appear second on mobile (bottom) and lg (right) */}
+        <div className="order-2 w-full max-w-md lg:w-auto lg:flex-shrink-0">
+          <Card className="shadow-xl w-full">
             <CardHeader className="text-center">
-              <UserPlus className="mx-auto h-10 w-10 text-primary mb-3" />
-              <CardTitle className="text-2xl">Create Account</CardTitle>
-              <CardDescription>Join to securely manage your files and snippets.</CardDescription>
+              <UserPlus className="mx-auto h-8 w-8 sm:h-10 sm:w-10 text-primary mb-2 sm:mb-3" />
+              <CardTitle className="text-xl sm:text-2xl">Create Account</CardTitle>
+              <CardDescription className="text-sm sm:text-base">Join to securely manage your files and snippets.</CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSignup} className="space-y-6">
-                <div className="space-y-2">
+              <form onSubmit={handleSignup} className="space-y-3 sm:space-y-4">
+                <div className="space-y-1 sm:space-y-2">
                   <Label htmlFor="username">Username</Label>
                   <Input
                     id="username"
@@ -188,7 +181,7 @@ export default function SignupPage() {
                     disabled={isLoading}
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1 sm:space-y-2">
                   <Label htmlFor="email">Email</Label>
                   <Input
                     id="email"
@@ -200,7 +193,7 @@ export default function SignupPage() {
                     disabled={isLoading}
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1 sm:space-y-2">
                   <Label htmlFor="password">Password</Label>
                   <div className="relative">
                     <Input
@@ -227,15 +220,15 @@ export default function SignupPage() {
                     </Button>
                   </div>
                   {passwordStrength && password && (
-                    <div className="mt-2">
-                      <div className="flex items-center justify-between mb-1">
+                    <div className="mt-1">
+                      <div className="flex items-center justify-between mb-0.5 sm:mb-1">
                         <span className="text-xs font-medium text-muted-foreground">Strength: {passwordStrength.text}</span>
                       </div>
-                      <Progress value={(passwordStrength.level + 1) * 20} className={`h-1.5 ${passwordStrength.color}`} />
+                      <Progress value={(passwordStrength.level + 1) * 20} className={`h-1 sm:h-1.5 ${passwordStrength.color}`} />
                     </div>
                   )}
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1 sm:space-y-2">
                   <Label htmlFor="confirmPassword">Confirm Password</Label>
                   <div className="relative">
                     <Input
@@ -262,12 +255,12 @@ export default function SignupPage() {
                     </Button>
                   </div>
                 </div>
-                <Button type="submit" className="w-full" disabled={isLoading}>
+                <Button type="submit" className="w-full pt-2" disabled={isLoading}>
                   {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating account...</> : 'Sign Up'}
                 </Button>
               </form>
             </CardContent>
-            <CardFooter className="flex flex-col items-center space-y-2">
+            <CardFooter className="flex flex-col items-center space-y-2 pt-3 sm:pt-4">
               <p className="text-sm text-muted-foreground">
                 Already have an account?{' '}
                 <Link href="/login" className="font-medium text-primary hover:underline">
