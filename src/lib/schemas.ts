@@ -16,6 +16,20 @@ export const EnhanceRecoveryPromptSchema = z.object({
 export type EnhanceRecoveryPromptFormValues = z.infer<typeof EnhanceRecoveryPromptSchema>;
 
 export const FileEncryptionSchema = z.object({
-  passphrase: z.string().min(1, "Passphrase cannot be empty."), // Changed min length from 8 to 1
+  passphrase: z.string().min(1, "Passphrase cannot be empty."),
 });
 export type FileEncryptionFormValues = z.infer<typeof FileEncryptionSchema>;
+
+export const PasswordResetActionSchema = z.object({
+  newPassword: z.string().min(8, "Password must be at least 8 characters long."),
+  confirmNewPassword: z.string(),
+}).refine(data => data.newPassword === data.confirmNewPassword, {
+  message: "Passwords do not match.",
+  path: ["confirmNewPassword"], // path of error
+});
+export type PasswordResetActionFormValues = z.infer<typeof PasswordResetActionSchema>;
+
+export const SettingsProfileFormSchema = z.object({
+  displayName: z.string().min(1, "Display name cannot be empty.").max(50, "Display name is too long."),
+});
+export type SettingsProfileFormValues = z.infer<typeof SettingsProfileFormSchema>;

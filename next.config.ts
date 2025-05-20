@@ -1,8 +1,6 @@
-
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
-  /* config options here */
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -13,21 +11,19 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'picsum.photos',
-        port: '',
-        pathname: '/**',
+        hostname: 'picsum.photos', // Existing
       },
       {
         protocol: 'https',
-        hostname: 'blogger.googleusercontent.com',
-        port: '',
-        pathname: '/**',
+        hostname: 'lockme.my', // Existing
       },
-      {
+      { // For Firebase Storage
         protocol: 'https',
-        hostname: 'lockme.my',
-        port: '',
-        pathname: '/**',
+        hostname: 'firebasestorage.googleapis.com',
+      },
+      { // For placeholder images
+        protocol: 'https',
+        hostname: 'placehold.co',
       }
     ],
   },

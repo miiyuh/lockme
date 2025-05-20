@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { FC } from 'react';
@@ -5,8 +6,9 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { PassphraseGeneratorSchema, type PassphraseGeneratorFormValues } from '@/lib/schemas';
-import { handleGeneratePassphraseAction } from '@/app/actions'; 
+import { handleGeneratePassphraseAction } from '@/app/actions';
 import type { GeneratePassphraseOutput } from '@/ai/flows/generate-passphrase';
+import { useAuth } from '@/contexts/AuthContext'; // Added
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,9 +18,12 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Wand2, Copy } from 'lucide-react';
+import { Loader2, Wand2, Copy, AlertCircle } from 'lucide-react';
+import { useActivity } from '@/contexts/ActivityContext';
 
 const PassphraseGeneratorForm: FC = () => {
+  const { user } = useAuth();
+  const { triggerActivityRefresh } = useActivity();
   const [generatedPassphrase, setGeneratedPassphrase] = useState<GeneratePassphraseOutput | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const { toast } = useToast();
@@ -34,19 +39,29 @@ const PassphraseGeneratorForm: FC = () => {
   });
 
   const onSubmit = async (values: PassphraseGeneratorFormValues) => {
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "You must be logged in to generate passphrases and log activity.",
+        variant: "destructive",
+      });
+      return;
+    }
     setIsGenerating(true);
     setGeneratedPassphrase(null);
     try {
-      const result = await handleGeneratePassphraseAction(values); 
+      const result = await handleGeneratePassphraseAction(values, user.uid);
       setGeneratedPassphrase(result);
       toast({
         title: "Passphrase Generated",
         description: "Your new secure passphrase is ready.",
       });
+      triggerActivityRefresh(); // Refresh activity logs
     } catch (error) {
+      console.error("Error in PassphraseGeneratorForm onSubmit:", error);
       toast({
-        title: "Error",
-        description: (error as Error).message || "Could not generate passphrase.",
+        title: "Error Generating Passphrase",
+        description: (error as Error).message || "Could not generate passphrase. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -100,7 +115,7 @@ const PassphraseGeneratorForm: FC = () => {
             )}
           />
         </div>
-        
+
         <div className="flex items-center space-x-4">
           <FormField
             control={form.control}
@@ -138,7 +153,14 @@ const PassphraseGeneratorForm: FC = () => {
           />
         </div>
 
-        <Button type="submit" disabled={isGenerating} className="w-full">
+        {!user && (
+          <div className="flex items-center p-3 text-sm text-destructive border border-destructive/50 bg-destructive/10 rounded-md">
+            <AlertCircle className="mr-2 h-4 w-4" />
+            <span>Please log in to generate passphrases and save activity.</span>
+          </div>
+        )}
+
+        <Button type="submit" disabled={isGenerating || !user} className="w-full">
           {isGenerating ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : (
