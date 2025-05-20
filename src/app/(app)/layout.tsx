@@ -2,7 +2,7 @@
 "use client";
 import type { ReactNode } from 'react';
 import Link from 'next/link';
-import { PanelLeft, Settings } from 'lucide-react';
+import { PanelLeft, Settings, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import {
   Sidebar,
@@ -27,9 +27,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import AuthButton from '@/components/AuthButton';
-import { Skeleton } from '@/components/ui/skeleton';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
-
+import CurrentDateTime from '@/components/CurrentDateTime'; // Added import
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -64,18 +63,18 @@ export default function AppLayout({ children }: AppLayoutProps) {
   if (authLoading) {
     return (
         <div className="flex h-screen items-center justify-center">
-            <Skeleton className="h-12 w-12 rounded-full mb-4" />
-            <div className="space-y-2">
-                <Skeleton className="h-4 w-[250px]" />
-                <Skeleton className="h-4 w-[200px]" />
-            </div>
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
         </div>
     );
   }
   
 
   if (!user) { 
-      return null; 
+      return (
+        <div className="flex h-screen items-center justify-center">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </div>
+      );
   }
 
 
@@ -89,7 +88,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
               alt="LockMe Logo"
               width={64}
               height={32}
-              className="h-8 w-auto group-data-[collapsible=icon]:h-10 group-data-[collapsible=icon]:w-10 object-contain"
+              className="h-8 w-auto group-data-[collapsible=icon]:h-12 group-data-[collapsible=icon]:w-12 object-contain"
               data-ai-hint="brand logo"
             />
           </Link>
@@ -154,8 +153,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
         <main className="flex-1 overflow-auto p-4 sm:px-6 sm:py-0 md:gap-8">
           {children}
         </main>
-        <footer className="py-6 px-6 mt-auto text-center text-xs text-muted-foreground border-t">
-          Privacy shouldn't be a luxury.
+        <footer className="flex flex-col sm:flex-row items-center justify-between py-4 px-6 mt-auto text-xs text-muted-foreground border-t gap-2 sm:gap-4">
+          <p>Privacy shouldn't be a luxury.</p>
+          <CurrentDateTime />
         </footer>
       </SidebarInset>
     </SidebarProvider>
