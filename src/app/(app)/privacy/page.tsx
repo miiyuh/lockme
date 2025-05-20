@@ -103,7 +103,7 @@ export default function PrivacyPolicyPage() {
             </section>
 
             <p className="text-xs text-muted-foreground pt-4">
-              This is a sample Privacy Policy for a simulated application. For a real application, consult with a legal professional.
+              This is a sample Privacy Policy for a simulated application. For a real application, we will consult with a legal professional.
             </p>
           </CardContent>
         </Card>

@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Info, User, Zap, ShieldCheck, Linkedin, Github, Globe } from 'lucide-react';
 import Image from 'next/image';

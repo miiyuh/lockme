@@ -17,9 +17,13 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'lockme.my', // Existing
       },
-      { // Add this block for Firebase Storage
+      { // For Firebase Storage
         protocol: 'https',
-        hostname: 'firebasestorage.googleapis.com', // Common hostname for Firebase Storage
+        hostname: 'firebasestorage.googleapis.com',
+      },
+      { // For placeholder images
+        protocol: 'https',
+        hostname: 'placehold.co',
       }
     ],
   },

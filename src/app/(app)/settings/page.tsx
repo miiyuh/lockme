@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Settings, UserCircle, Image as ImageIcon, KeyRound, Trash2, Loader2, CheckCircle2, UploadCloud, Crop } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { auth, storage } from '@/lib/firebase';
-import { updateProfile, type User } from 'firebase/auth';
+import { updateProfile, type User, sendPasswordResetEmail } from 'firebase/auth';
 import { ref, uploadBytesResumable, getDownloadURL, type UploadTaskSnapshot } from 'firebase/storage';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -24,6 +24,7 @@ import { Progress } from '@/components/ui/progress';
 import ReactCrop, { centerCrop, makeAspectCrop, type Crop as CropperCropType, type PixelCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import Link from 'next/link';
 
 
 const profileFormSchema = z.object({
@@ -107,17 +108,16 @@ export default function SettingsPage() {
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [isCompressing, setIsCompressing] = useState(false);
   
-  const [profileImageFile, setProfileImageFile] = useState<File | null>(null); // This will hold the cropped & compressed file for upload
-  const [profileImagePreview, setProfileImagePreview] = useState<string | null>(null); // This shows the current avatar or the cropped preview
+  const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
+  const [profileImagePreview, setProfileImagePreview] = useState<string | null>(null); 
 
-  // Cropper states
   const [imgSrcToCrop, setImgSrcToCrop] = useState<string>('');
   const [crop, setCrop] = useState<CropperCropType | undefined>();
   const [completedCrop, setCompletedCrop] = useState<PixelCrop | undefined>();
   const [showCropperModal, setShowCropperModal] = useState(false);
   const imageRefForCrop = useRef<HTMLImageElement | null>(null);
   const previewCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const aspect = 1 / 1; // For square crop
+  const aspect = 1 / 1; 
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [defaultEncryptionStrength, setDefaultEncryptionStrength] = useState("aes-256-gcm");
@@ -133,7 +133,7 @@ export default function SettingsPage() {
   useEffect(() => {
     if (user) {
       form.reset({ displayName: user.displayName || '' });
-      if (!profileImageFile) { // Only update preview from user.photoURL if no local file is staged
+      if (!profileImageFile) { 
         setProfileImagePreview(user.photoURL || null);
       }
     }
@@ -149,11 +149,11 @@ export default function SettingsPage() {
     try {
       await updateProfile(user, { displayName: data.displayName });
       if (auth.currentUser) {
-        await auth.currentUser.reload();
-        setUser(auth.currentUser);
+        await auth.currentUser.reload(); 
+        setUser(auth.currentUser); 
       }
       toast({ title: "Profile Updated", description: "Your display name has been updated successfully." });
-      form.reset({ displayName: data.displayName });
+      form.reset({ displayName: data.displayName }); 
     } catch (error) {
       console.error("Error updating display name:", error);
       toast({ title: "Update Failed", description: (error as Error).message, variant: "destructive" });
@@ -165,12 +165,13 @@ export default function SettingsPage() {
   const handleOriginalFileSelect = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 15 * 1024 * 1024) { // 5MB limit for original file
+      console.log(`SettingsPage: Original file selected: ${file.name}, Size: ${(file.size / 1024 / 1024).toFixed(2)} MB`);
+      if (file.size > 15 * 1024 * 1024) { // Updated to 15MB
         toast({ title: "File Too Large", description: "Original image cannot exceed 15MB. Please choose a smaller file.", variant: "destructive" });
         event.target.value = ""; 
         return;
       }
-      setCrop(undefined); // Reset crop
+      setCrop(undefined); 
       const reader = new FileReader();
       reader.addEventListener('load', () => {
         setImgSrcToCrop(reader.result?.toString() || '');
@@ -178,7 +179,7 @@ export default function SettingsPage() {
       });
       reader.readAsDataURL(file);
     }
-    event.target.value = ""; // Reset file input to allow selecting the same file again if needed
+    event.target.value = ""; 
   };
 
   function onImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
@@ -211,14 +212,15 @@ export default function SettingsPage() {
     console.log(`SettingsPage: Cropped file created: ${croppedFile.name}, Size: ${(croppedFile.size / 1024 / 1024).toFixed(2)} MB`);
 
     const options = {
-      maxSizeMB: 0.5, // Aim for files under 500KB
-      maxWidthOrHeight: 800,
+      maxSizeMB: 0.5, // Aim for under 500KB for the final upload
+      maxWidthOrHeight: 800, // Resize larger images
       useWebWorker: true,
-      initialQuality: 0.7,
+      initialQuality: 0.7, // Start with a decent quality
       alwaysKeepResolution: false,
     };
 
     try {
+      console.log("SettingsPage: Compressing cropped image...");
       const compressedCroppedFile = await imageCompression(croppedFile, options);
       console.log(`SettingsPage: Compressed cropped file ready: ${compressedCroppedFile.name}, Size: ${(compressedCroppedFile.size / 1024 / 1024).toFixed(2)} MB`);
       setProfileImageFile(compressedCroppedFile);
@@ -228,11 +230,10 @@ export default function SettingsPage() {
       console.error('SettingsPage: Error compressing cropped image:', error);
       toast({ title: "Compression Failed", description: "Could not compress the cropped image. Please try again.", variant: "destructive" });
       setProfileImageFile(null);
-      // Revert preview to original user photoURL if compression fails
       setProfileImagePreview(user?.photoURL || null); 
     } finally {
       setIsCompressing(false);
-      setImgSrcToCrop(''); // Clear original image from cropper state
+      setImgSrcToCrop('');
     }
   };
 
@@ -243,10 +244,11 @@ export default function SettingsPage() {
       return;
     }
     setIsUploadingPicture(true);
-    setUploadProgress(null);
+    setUploadProgress(null); 
 
-    const fileExtension = profileImageFile.name.split('.').pop() || 'png'; // Default to png for cropped images
-    const fileNameInStorage = `profile_${user.uid}_${Date.now()}.${fileExtension}`;
+    const fileExtension = profileImageFile.name.split('.').pop() || 'png';
+    const timestamp = Date.now();
+    const fileNameInStorage = `profile_${user.uid}_${timestamp}.${fileExtension}`;
     const filePath = `profilePictures/${user.uid}/${fileNameInStorage}`;
     const storageRef = ref(storage, filePath);
 
@@ -272,13 +274,11 @@ export default function SettingsPage() {
 
           if (auth.currentUser) {
             await updateProfile(auth.currentUser, { photoURL: downloadURL });
-            await auth.currentUser.reload(); // Force refresh of user object
-            setUser(auth.currentUser); // Update context
+            await auth.currentUser.reload();
+            setUser(auth.currentUser);
           }
-
           toast({ title: "Profile Picture Updated!", description: "Your new profile picture is now active." });
-          setProfileImageFile(null); // Clear the staged file
-          // ProfileImagePreview will be updated by the useEffect hook listening to user.photoURL
+          setProfileImageFile(null); 
         } catch (error) {
             console.error("SettingsPage: Error getting download URL or updating profile:", error);
             toast({ title: "Profile Update Failed", description: "Could not finalize profile picture update.", variant: "destructive" });
@@ -290,16 +290,37 @@ export default function SettingsPage() {
     );
   };
 
-
-  const handlePasswordChange = () => {
-    toast({
-      title: "Feature Coming Soon",
-      description: "Password change functionality will be implemented in a future update.",
-    });
+  const handlePasswordChange = async () => {
+    if (!user || !user.email) {
+      toast({
+        title: "Error",
+        description: "You must be logged in and have a verified email address to change your password.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setIsUpdatingProfile(true); 
+    try {
+      await sendPasswordResetEmail(auth, user.email);
+      toast({
+        title: "Password Reset Email Sent",
+        description: `An email has been sent to ${user.email} with instructions to reset your password. Please check your inbox.`,
+      });
+    } catch (error) {
+      console.error("Error sending password reset email:", error);
+      toast({
+        title: "Failed to Send Email",
+        description: (error as Error).message || "Could not send password reset email. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdatingProfile(false);
+    }
   };
 
   const handleClearLocalCache = () => {
-    localStorage.removeItem('lockme-snippets'); // Example, adjust if other keys are used
+    localStorage.removeItem('lockme-snippets'); 
+    
     toast({ title: "Local Cache Cleared", description: "Locally stored snippets and any app preferences have been reset." });
   };
 
@@ -319,7 +340,7 @@ export default function SettingsPage() {
       <Dialog open={showCropperModal} onOpenChange={(open) => {
         if (!open) {
           setShowCropperModal(false);
-          setImgSrcToCrop(''); // Clear image if modal is closed without confirming
+          setImgSrcToCrop('');
         } else {
           setShowCropperModal(true);
         }
@@ -359,9 +380,9 @@ export default function SettingsPage() {
               <Settings className="mr-3 h-7 w-7 text-primary" />
               Application Settings
             </CardTitle>
-            <p className="text-sm text-muted-foreground">
+            <CardDescription>
               Customize your LockMe experience and manage your profile.
-            </p>
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-10">
             <section className="space-y-6 p-6 border rounded-lg shadow-sm">
@@ -381,9 +402,9 @@ export default function SettingsPage() {
                   </Label>
                   <Input id="profile-picture-input-trigger" type="file" accept="image/png, image/jpeg, image/gif" className="hidden" onChange={handleOriginalFileSelect} disabled={isProcessing} />
                   <p className="text-xs text-muted-foreground mt-1">
-                    PNG, JPG, GIF up to 15MB.
+                  PNG, JPG, GIF up to 15MB.
                   </p>
-                  {(isCompressing || (isUploadingPicture && uploadProgress === null)) && <p className="text-xs text-primary mt-1 flex items-center"><Loader2 className="mr-1 h-3 w-3 animate-spin" /> {isCompressing ? 'Processing image...' : 'Preparing upload...'}</p>}
+                  {(isCompressing || (isUploadingPicture && uploadProgress === null)) && <p className="text-xs text-primary mt-1 flex items-center"><Loader2 className="mr-1 h-3 w-3 animate-spin" /> {isCompressing ? 'Processing image...' : (uploadProgress === null ? 'Preparing upload...' : 'Starting upload...')}</p>}
                   
                   {profileImageFile && !isCompressing && (
                     <div className="mt-3 flex flex-col sm:flex-row items-center gap-2">
@@ -402,13 +423,16 @@ export default function SettingsPage() {
                         </Button>
                     </div>
                   )}
-                  {isUploadingPicture && (
+                  {isUploadingPicture && uploadProgress !== null && (
                     <div className="mt-2">
-                      <Progress value={uploadProgress !== null ? uploadProgress : 0} className="h-2 w-full" />
+                      <Progress value={uploadProgress} className="h-2 w-full" />
                       <p className="text-xs text-muted-foreground text-center mt-1">
-                        {uploadProgress !== null ? `${Math.round(uploadProgress)}% uploaded` : 'Starting upload...'}
+                        {`${Math.round(uploadProgress)}% uploaded`}
                       </p>
                     </div>
+                  )}
+                   {isUploadingPicture && uploadProgress === null && (
+                    <p className="text-xs text-muted-foreground text-center mt-1">Starting upload...</p>
                   )}
                 </div>
               </div>
@@ -429,8 +453,8 @@ export default function SettingsPage() {
                     )}
                   />
                   <Button type="submit" disabled={isProcessing || !form.formState.isDirty}>
-                    {isUpdatingProfile && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {!isUpdatingProfile && <CheckCircle2 className="mr-2 h-4 w-4" />}
+                    {isUpdatingProfile && !isUploadingPicture && !isCompressing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {(!isUpdatingProfile || isUploadingPicture || isCompressing) && <CheckCircle2 className="mr-2 h-4 w-4" />}
                     Save Display Name
                   </Button>
                 </form>
@@ -439,14 +463,19 @@ export default function SettingsPage() {
               <div className="space-y-2">
                 <Label htmlFor="email" className="font-medium">Email Address</Label>
                 <Input id="email" type="email" value={user.email || ''} disabled className="bg-muted/50" />
-                <p className="text-sm text-muted-foreground">Your email for account recovery (not editable).</p>
+                <p className="text-xs text-muted-foreground">
+                  Your email for account recovery. To change your email, please{' '}
+                  <Link href="/contact" className="text-primary hover:underline">
+                    contact support
+                  </Link>.
+                </p>
               </div>
 
               <div>
                 <Button variant="outline" onClick={handlePasswordChange} disabled={isProcessing}>
                   <KeyRound className="mr-2 h-4 w-4" />Change Password
                 </Button>
-                 <p className="text-sm text-muted-foreground mt-2">Secure your account by regularly updating your password.</p>
+                 <p className="text-xs text-muted-foreground mt-2">Secure your account by regularly updating your password. An email will be sent to you.</p>
               </div>
             </section>
 
@@ -455,7 +484,7 @@ export default function SettingsPage() {
               <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/30 transition-colors">
                 <div>
                   <Label htmlFor="notifications" className="font-medium">Enable Notifications</Label>
-                  <p className="text-sm text-muted-foreground">Receive alerts for important events (simulated).</p>
+                  <p className="text-xs text-muted-foreground">Receive alerts for important events (simulated).</p>
                 </div>
                 <Switch
                   id="notifications"
@@ -480,7 +509,7 @@ export default function SettingsPage() {
                       <SelectItem value="chacha20-poly1305">ChaCha20-Poly1305</SelectItem>
                     </SelectContent>
                   </Select>
-                <p className="text-sm text-muted-foreground">Select the default encryption algorithm for new files (simulated).</p>
+                <p className="text-xs text-muted-foreground">Select the default encryption algorithm for new files (simulated).</p>
               </div>
             </section>
 
@@ -490,13 +519,13 @@ export default function SettingsPage() {
                 <Button variant="destructive" onClick={handleClearLocalCache} disabled={isProcessing}>
                   <Trash2 className="mr-2 h-4 w-4" />Clear Local Cache
                 </Button>
-                 <p className="text-sm text-muted-foreground mt-2">Remove any temporary data stored by the application in your browser.</p>
+                 <p className="text-xs text-muted-foreground mt-2">Remove any temporary data stored by the application in your browser.</p>
               </div>
             </section>
           </CardContent>
           <CardFooter className="pt-6 text-center">
               <p className="text-xs text-muted-foreground">
-                LockMe Version: 1.0.0 (Simulated)
+                LockMe v1.0.0
               </p>
           </CardFooter>
         </Card>
@@ -504,3 +533,4 @@ export default function SettingsPage() {
     </div>
   );
 }
+
