@@ -36,7 +36,6 @@ const renderNavLinks = (links: NavLink[]) => {
   return links.map((link) => (
     <SidebarMenuItem key={link.href}>
       <SidebarMenuButton
-        href={link.href}
         asChild
         tooltip={{ children: link.label, side: 'right', align: 'center' }}
       >
