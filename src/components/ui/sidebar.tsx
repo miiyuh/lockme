@@ -367,7 +367,7 @@ const SidebarFooter = React.forwardRef<
     <div
       ref={ref}
       data-sidebar="footer"
-      className={cn("flex flex-col gap-2 p-2", className)}
+      className={cn("p-2", className)} // Removed default flex flex-col gap-2
       {...props}
     />
   )
@@ -542,7 +542,7 @@ const SidebarMenuButton = React.forwardRef<
       size = "default",
       tooltip,
       className,
-      onClick: originalOnClick, // Renamed original onClick to avoid conflict
+      onClick: originalOnClick, 
       ...props
     },
     ref
@@ -554,7 +554,7 @@ const SidebarMenuButton = React.forwardRef<
       if (isMobile) {
         setOpenMobile(false);
       }
-      originalOnClick?.(event); // Call the original onClick handler if it exists
+      originalOnClick?.(event); 
     };
 
     const button = (
@@ -564,7 +564,7 @@ const SidebarMenuButton = React.forwardRef<
         data-size={size}
         data-active={isActive}
         className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
-        onClick={handleClick} // Apply the new click handler
+        onClick={handleClick} 
         {...props}
       />
     )
