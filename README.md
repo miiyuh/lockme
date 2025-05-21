@@ -1,96 +1,177 @@
 <img src="https://lockme.my/assets/img/logo_lockme_highRESver.png" alt="LockMe logo" height="64px" />
-A file encryption and decryption desktop application project.
 
-# 🔐 LockMe: Secure File Encryption and Decryption Desktop Application
+# LockMe: Secure File Encryption and Decryption Application
 
-**LockMe** is a modern, cross-platform desktop application built to make file encryption and decryption secure, fast, and user-friendly. Designed for Windows and Linux users, LockMe empowers individuals and small businesses to protect sensitive data using industry-standard cryptographic techniques such as AES-256 — all with a minimal, intuitive interface.
+LockMe is a privacy-first desktop web app that helps you encrypt, decrypt, and manage files securely. It runs entirely client-side, with AI-assisted tools and Firebase-powered user management under the hood.
 
-## ✨ Key Features
+## ✨ Features
 
-- 🔐 **AES-256 encryption** for high-grade file security
-- 🧑‍💻 **Cross-platform compatibility**: works on Windows and Linux
-- 🖱️ **Drag-and-drop interface** for easy file handling
-- 📁 **Support for multiple file types**: documents, images, archives
-- 🔑 **Local key generation and storage** (no cloud required)
-- 🔎 **File integrity verification**
-- 💬 **Real-time progress indicators and feedback**
-- 🚫 **Offline functionality**: no internet or cloud services needed
+### 🔒 File Encryption & Decryption
 
-## 🎯 Project Objectives
+* **AES-256-GCM encryption** via Web Crypto API.
+* Client-side only — your files and passphrases never touch a server.
+* Encrypt/decrypt multiple files at once.
+* Encrypted files use a `.lockme` extension.
 
-1. **Provide a cross-platform desktop solution** for file encryption and decryption.
-2. **Implement strong cryptographic algorithms**, primarily AES-256.
-3. **Design a beginner-friendly interface** with drag-and-drop and status messages.
-4. **Ensure secure key management** (generate, store, retrieve locally).
-5. **Keep the tool lightweight and privacy-focused** without relying on cloud services.
+### 🤖 AI Security Toolkit (Genkit + Gemini)
 
-## 🧠 Built With
+* **Passphrase Generator:** Strong, customizable, and memorable.
+* **Recovery Prompt Enhancer:** AI-generated prompts tailored to you.
+* **Strength Analyzer:** Get feedback on how strong your passphrase is.
 
-- **Programming Language**: Java / Python / C++ (based on final implementation)
-- **Crypto Libraries**: 
-  - PyCryptodome (Python)
-  - Java Cryptography Extension (JCE)
-  - Crypto++ (C++)
-- **Frameworks**:
-  - Qt or Electron for GUI
-  - Tkinter or PyQt (Python option)
-- **Encryption Algorithms**:
-  - AES-256 (primary)
-  - RSA (for future secure key exchange support)
+### 📚 Code Snippet Manager
 
-## 🧪 Security & Evaluation
+* Store and tag frequently used code snippets.
+* Syntax highlighting for multiple languages.
+* Optional encryption for sensitive code.
+* Search by name, tag, or content.
+* Backed by Firebase Firestore.
 
-LockMe was evaluated using these metrics:
-- ⏱️ **Encryption speed & throughput**
-- 🧠 **Memory and CPU usage**
-- 🔒 **Resistance to brute-force and side-channel attacks**
-- 🧪 **User acceptance & feedback testing**
+### 👤 Account & Profile Management
 
-## 🔍 Limitations
+* Email/password sign-up and login (Firebase Auth).
+* Email verification, password reset, and secure account deletion.
+* Manage your display name and profile picture (with image cropping).
 
-- 🚫 No batch encryption (currently single-file only)
-- ☁️ No cloud sync or integration with services like Google Drive
-- 🔐 Advanced key sharing not implemented (basic key handling only)
+### 📊 Personalized Dashboard
 
-## 🧩 Target Users
+* Track file activity, passphrases generated, and more.
+* View a history of recent operations.
 
-- Students and non-technical users who want simple encryption
-- Freelancers and small businesses with security-conscious workflows
-- IT professionals needing offline, GUI-based encryption tools
+### ⚙️ App Preferences
 
-## 📌 How This Project Differs
+* Light/dark theme toggle.
+* Local app settings saved via `localStorage`.
 
-| Tool     | GUI | AES-256 | Offline | Key Mgmt | File Integrity | Cross-Platform |
-|----------|-----|---------|---------|-----------|----------------|----------------|
-| Hat.sh   | ✅  | ✅      | ⚠️ Browser-based | ❌        | ❌             | ✅ Web         |
-| Enc (CLI)| ❌  | ✅      | ✅      | ❌        | ❌             | ✅             |
-| **LockMe** | ✅  | ✅      | ✅      | ✅        | ✅             | ✅             |
+### 📱 Responsive Design
 
-## 🧠 Inspiration & Research
+* Works well on desktop and mobile devices.
 
-This project is based on extensive literature and real-world testing. It addresses:
-- Lack of beginner-friendly encryption tools
-- Platform exclusivity in existing apps
-- Poor key management in many open-source tools
+## 🛠 Tech Stack
 
-## 🧑 Author
+* **Frontend:** Next.js (App Router), React, TypeScript
+* **UI:** Tailwind CSS, ShadCN
+* **AI Integration:** Genkit, Gemini
+* **Backend & Auth:** Firebase
 
-**Muhamad Azri Muhamad Azmir**  
-Bachelor of Computer Forensics  
-Management and Science University (MSU)  
-Supervised by: Dr. Asma Mahfoudh Hezam Al-Hakimi
+  * Firestore (data), Storage (profile pics), Auth (user accounts)
+  * Firebase Admin SDK for secure server-side tasks
 
-## 📚 References
+## 🚀 Getting Started
 
-- Awad Al-Hazaimeh (2013). *A New Approach for Complex Encrypting and Decrypting Data*  
-- Mushtaq et al. (2017). *A Survey on Cryptographic Encryption Algorithms*  
-- Salama et al. (2011). *Studying the Effects of Most Common Encryption Algorithms*  
-- GitHub: [hat.sh](https://github.com/sh-dv/hat.sh), [enc](https://github.com/life4/enc)
+### Prerequisites
 
-## 📜 License
+* Node.js (v18+)
+* npm or yarn
+* A Firebase project (with Firestore, Storage, and Auth enabled)
+* [Gemini API key](https://aistudio.google.com/app/apikey)
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more info.
+### 🔧 Local Setup
+
+1. **Clone the repo**
+
+   ```bash
+   git clone https://github.com/your-username/lockme.git
+   cd lockme
+   ```
+
+2. **Install dependencies**
+
+   ```bash
+   npm install
+   # or
+   yarn install
+   ```
+
+3. **Set up environment variables**
+   Create a `.env.local` file and add:
+
+   ```env
+   NEXT_PUBLIC_FIREBASE_API_KEY=...
+   NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=...
+   NEXT_PUBLIC_FIREBASE_PROJECT_ID=...
+   NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=...
+   NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=...
+   NEXT_PUBLIC_FIREBASE_APP_ID=...
+   GEMINI_API_KEY=...
+   FIREBASE_SERVICE_ACCOUNT_JSON='{"type":"service_account",...}'
+   ```
+
+4. **Deploy Firebase Rules**
+
+   ```bash
+   firebase deploy --only firestore
+   firebase deploy --only storage
+   ```
+
+5. **Start Development Servers**
+
+   * **App:**
+
+     ```bash
+     npm run dev
+     ```
+
+   * **AI Flows:** Run in a separate terminal if applicable.
+
+## 🧪 How to Use
+
+### 🔐 File Encryption
+
+* Go to the Encrypt/Decrypt page.
+* Upload files or drag and drop.
+* Enter a passphrase (AI will rate its strength).
+* Files are processed in-browser and downloaded to your device.
+
+### 🧠 AI Security Toolkit
+
+* Generate passphrases tailored to your preferences.
+* Improve your recovery prompts using AI.
+* Analyze passphrase strength with detailed feedback.
+
+### 📚 Code Snippet Manager
+
+* Add/edit snippets with name, language, content, and tags.
+* Search and filter your saved snippets.
+* Optional encryption for sensitive code.
+
+### 👤 User & Account Settings
+
+* Update your display name and profile picture.
+* Resend email verifications or reset your password.
+* Securely delete your account.
+
+## 🔐 Security Notes
+
+* **Encryption Safety:** The strength of your encryption depends on the strength of your passphrase.
+* **No Server Access:** File content and passphrases stay on your device.
+* **Firebase Admin Key:** Use environment variables to handle your keys securely.
+* **Firestore & Storage:** Protected by Firebase security rules.
+
+## 🗓 Upcoming Features
+
+* Support for more encryption algorithms
+* Secure sharing of encrypted files and code
+* Two-Factor Authentication (2FA)
+
+## 📚 References & Research
+
+LockMe draws inspiration from academic research and existing tools:
+
+* Al-Hazaimeh (2013) – *A New Approach for Complex Encrypting and Decrypting Data*
+* Mushtaq et al. (2017) – *A Survey on Cryptographic Encryption Algorithms*
+* Salama et al. (2011) – *Effects of Common Encryption Algorithms*
+* GitHub: [hat.sh](https://github.com/sh-dv/hat.sh), [enc](https://github.com/life4/enc)
+
+by **Muhamad Azri Muhamad Azmir**,  
+Bachelor of Computer Forensics at Management and Science University (MSU)  
+supervised by **Dr. Asma Mahfoudh Hezam Al-Hakimi**
 
 ## 📬 Feedback & Contributions
 
-Contributions, feedback, or issues are welcome! Please open a pull request or submit an issue in the repo.
+Found a bug? Have an idea?
+Open an issue or a pull request — all contributions are welcome.
+
+## 📄 License
+
+This project is open source under the [MIT License](LICENSE).
