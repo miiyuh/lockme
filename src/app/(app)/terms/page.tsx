@@ -1,6 +1,9 @@
 
+"use client";
+
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { FileText, AlertTriangle } from 'lucide-react';
+import Link from 'next/link';
 
 export default function TermsOfServicePage() {
   return (
@@ -10,10 +13,10 @@ export default function TermsOfServicePage() {
           <CardHeader>
             <CardTitle className="flex items-center text-2xl">
               <FileText className="mr-2 h-6 w-6 text-primary" />
-              Terms of Service
+              Terms of Service for LockMe
             </CardTitle>
             <CardDescription>
-              Last Updated: {new Date().toISOString().split('T')[0]}
+              Last Updated: {new Date().toISOString().slice(0, 10)}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -77,7 +80,7 @@ export default function TermsOfServicePage() {
             <section>
               <h2 className="text-xl font-semibold text-foreground mb-3 mt-6">7. Contact Us</h2>
               <p className="text-foreground leading-relaxed">
-                If you have any questions about these Terms, please <a href="/contact" className="text-primary hover:underline">contact us</a>.
+                If you have any questions about these Terms, please <Link href="/contact" className="text-primary hover:underline">contact us</Link>.
               </p>
             </section>
           </CardContent>

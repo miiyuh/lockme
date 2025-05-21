@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Info, User, Zap, ShieldCheck, Linkedin, Github, Globe } from 'lucide-react';
 import Image from 'next/image';
@@ -44,7 +43,7 @@ export default function AboutPage() {
                 <User className="mr-2 h-5 w-5 text-primary" /> Who I Am
               </h2>
               <p className="text-muted-foreground leading-relaxed">
-                LockMe is developed by a passionate individual (me) dedicated to digital privacy and security. I am committed to building tools that are both powerful and simple to use.
+                LockMe is developed by a passionate individual dedicated to digital privacy and security. I am committed to building tools that are both powerful and simple to use.
               </p>
             </section>
 
@@ -64,7 +63,7 @@ export default function AboutPage() {
               <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
                 <div className="relative w-32 h-32 md:w-40 md:h-40 rounded-full overflow-hidden shadow-md flex-shrink-0">
                   <Image
-                    src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgaAW7cKqJgoJf6fr1HSSZIBN04mDI3bf99kr6LqaHQYM6H3DEDwE9UaFIV4GdaLSfNQp9o5dE9Uc2wm4Os7Vlcllvy8cudw_LfPOtB_nGMpOzujzLXjCJQ4MEHXge1Xfskrc5YasohxFJP1I1nKSgLUJrnUG9oqPkXSLBZoEIiSWRPVKg/s220/azri_cropped.png"
+                    src="https://picsum.photos/seed/developer/200/200"
                     alt="Developer Profile"
                     fill
                     className="object-cover"
@@ -72,24 +71,25 @@ export default function AboutPage() {
                   />
                 </div>
                 <div className="text-center md:text-left">
-                  <h3 className="text-lg font-medium text-foreground">Muhamad Azri Muhamad Azmir a.k.a. miiyuh</h3>
-                  <p className="text-sm text-muted-foreground mb-3">Creator & Developer of LockMe</p>
+                  <h3 className="text-lg font-medium text-foreground">[Your Name/Alias]</h3>
+                  <p className="text-sm text-muted-foreground mb-3">Creator of LockMe</p>
                   <p className="text-muted-foreground leading-relaxed mb-4">
                     Driven by a passion for privacy and user empowerment, I developed LockMe to provide a simple yet secure solution for everyday encryption needs. My goal is to make digital security accessible to everyone.
+                    (Replace this with your own bio!)
                   </p>
                   <div className="flex justify-center md:justify-start space-x-3">
                     <Button variant="outline" size="icon" asChild>
-                      <Link href="https://www.linkedin.com/in/miiyuh/" target="_blank" aria-label="LinkedIn Profile">
+                      <Link href="#" target="_blank" aria-label="LinkedIn Profile">
                         <Linkedin className="h-5 w-5" />
                       </Link>
                     </Button>
                     <Button variant="outline" size="icon" asChild>
-                      <Link href="https://github.com/miiyuh" target="_blank" aria-label="GitHub Profile">
+                      <Link href="#" target="_blank" aria-label="GitHub Profile">
                         <Github className="h-5 w-5" />
                       </Link>
                     </Button>
                     <Button variant="outline" size="icon" asChild>
-                      <Link href="https://muhamad-azri.my" target="_blank" aria-label="Personal Website">
+                      <Link href="#" target="_blank" aria-label="Personal Website">
                         <Globe className="h-5 w-5" />
                       </Link>
                     </Button>
@@ -101,7 +101,7 @@ export default function AboutPage() {
 
             <div className="pt-4 text-center">
               <p className="text-xs text-muted-foreground">
-                Thanks for choosing LockMe!
+                Thank you for choosing LockMe.
               </p>
             </div>
           </CardContent>

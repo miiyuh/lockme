@@ -39,12 +39,6 @@ export const mainNavLinks: NavLink[] = [
 
 export const secondaryNavLinks: NavLink[] = [
   {
-    href: '/settings',
-    label: 'Settings',
-    icon: Settings,
-    separator: true,
-  },
-  {
     href: '/help',
     label: 'Help/FAQ',
     icon: HelpCircle,
