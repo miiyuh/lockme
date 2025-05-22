@@ -5,13 +5,11 @@ export interface Activity {
   type: "encrypt" | "decrypt" | "generate_passphrase" | "enhance_prompt" | "snippet_created" | "snippet_updated" | "snippet_deleted";
   description: string;
   timestamp: Timestamp;
-  fileName?: string; // For encrypt/decrypt
-  snippetName?: string; // For snippet actions
-  userId?: string; // For user-specific logging
+  userId?: string;
 }
 
 export interface SnippetDocument {
-  id?: string; // Firestore document ID
+  id?: string;
   name: string;
   language: string;
   code: string;
@@ -21,5 +19,5 @@ export interface SnippetDocument {
   tags?: string[];
   createdAt: Timestamp;
   updatedAt: Timestamp;
-  userId?: string; // For user-specific snippets
+  userId?: string;
 }

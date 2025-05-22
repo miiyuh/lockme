@@ -2,10 +2,10 @@
 "use client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import DashboardStatsCard from '@/components/DashboardStatsCard';
-import { FileLock, FileUp, KeyRound, ListChecks, Sparkles, Brain, ListTree, LucideActivity, FileInput, FileOutput, Activity, FolderLock } from 'lucide-react';
-import { useEffect, useState, useRef } from 'react';
-import { getRecentActivities, addActivity } from '@/lib/services/firestoreService';
-import type { Activity as ActivityType } from '@/types/firestore';
+import { FileLock, FileUp, KeyRound, ListChecks, Sparkles, Brain, ListTree, Activity as LucideActivity, FileInput, FileOutput, FolderLock } from 'lucide-react'; // Renamed Activity to LucideActivity
+import { useEffect, useState, useRef, useCallback } from 'react';
+import { getRecentActivities } from '@/lib/services/firestoreService';
+import type { Activity as ActivityType } from '@/types/firestore'; // Renamed Activity to ActivityType
 import { formatDistanceToNow } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -22,7 +22,7 @@ const DIAGNOSTIC_ACTIVITY_LIMIT_FOR_STATS = 50; // Temporarily limit for perform
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
-  const { lastActivityTimestamp, triggerActivityRefresh } = useActivity();
+  const { lastActivityTimestamp } = useActivity(); 
   const [displayedActivities, setDisplayedActivities] = useState<ActivityType[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const isFetchingDataRef = useRef(false);
@@ -40,14 +40,10 @@ export default function DashboardPage() {
         console.log("DashboardPage: performFetch called while already fetching. Aborting.");
         return;
       }
-      isFetchingDataRef.current = true;
-      setLoadingData(true);
-
-
+      
       if (authLoading) {
         console.log("DashboardPage: Auth is loading, skipping fetch.");
-        setLoadingData(false);
-        isFetchingDataRef.current = false;
+        setLoadingData(false); // Ensure loading state is reset if auth is still loading
         return;
       }
 
@@ -59,10 +55,12 @@ export default function DashboardPage() {
         setTotalOperations(0);
         setDisplayedActivities([]);
         setLoadingData(false);
-        isFetchingDataRef.current = false;
         return;
       }
       
+      isFetchingDataRef.current = true;
+      setLoadingData(true); // Set loading to true before starting the fetch
+
       const currentUserId = user?.uid;
       console.log("DashboardPage: performFetch user check. Authenticated User ID:", currentUserId, "Last Activity Timestamp:", lastActivityTimestamp);
 
@@ -76,7 +74,6 @@ export default function DashboardPage() {
       try {
         const fetchStartTime = Date.now();
         console.log(`DashboardPage: Fetching all activities for stats for userId: ${currentUserId} (limit: ${DIAGNOSTIC_ACTIVITY_LIMIT_FOR_STATS === undefined ? 'ALL' : DIAGNOSTIC_ACTIVITY_LIMIT_FOR_STATS})`);
-        // Fetch all activities for accurate stats calculation (or limited set for diagnostics)
         const allUserActivities = await getRecentActivities(currentUserId, DIAGNOSTIC_ACTIVITY_LIMIT_FOR_STATS, true);
         const fetchEndTime = Date.now();
         console.log(`DashboardPage: Fetched all ${allUserActivities.length} activities for stats for user ${currentUserId} (took ${fetchEndTime - fetchStartTime}ms)`);
@@ -120,8 +117,9 @@ export default function DashboardPage() {
         setTotalOperations(newTotalOperations);
 
         console.log(`DashboardPage: Fetching recent 10 activities for log for userId: ${currentUserId}`);
-        const recentUserActivitiesForLog = await getRecentActivities(currentUserId, 10, true);
-        console.log("DashboardPage: Recent activities fetched for log (first 5):", JSON.stringify(recentUserActivitiesForLog.slice(0, 5).map(a => ({ id: a.id, type: a.type, userId: a.userId, description: a.description }))));
+        // Use the already fetched 'allUserActivities' for the log, just take the first 10
+        const recentUserActivitiesForLog = allUserActivities.slice(0, 10); 
+        console.log("DashboardPage: Recent activities for log (from allUserActivities, first 5):", JSON.stringify(recentUserActivitiesForLog.slice(0, 5).map(a => ({ id: a.id, type: a.type, userId: a.userId, description: a.description }))));
         setDisplayedActivities(recentUserActivitiesForLog);
 
       } catch (error) {
@@ -157,7 +155,7 @@ export default function DashboardPage() {
     }
   };
 
-  if (authLoading || (!user && !authLoading && loadingData)) { // Show skeleton if auth is loading OR if no user and initial data load is happening
+  if (authLoading || (!user && !authLoading && loadingData)) { 
     return (
       <div className="container mx-auto py-6 sm:py-8 px-4">
         <div className="mb-6 sm:mb-8">
@@ -167,15 +165,12 @@ export default function DashboardPage() {
         <div className="grid gap-4 sm:gap-6 md:grid-cols-2 xl:grid-cols-4 mb-6 sm:mb-8">
           {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-40 sm:h-48 rounded-lg" />)}
         </div>
-        <div className="grid gap-4 sm:gap-6 md:grid-cols-2 xl:grid-cols-4 mb-8 sm:mb-12">
-           {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-20 sm:h-24 rounded-lg" />)}
-        </div>
         <Skeleton className="h-64 sm:h-72 rounded-lg" />
       </div>
     );
   }
   
-  if (!user && !authLoading) { // If auth is resolved and there's no user
+  if (!user && !authLoading) { 
     return (
       <div className="container mx-auto py-6 sm:py-8 px-4">
         <div className="text-center mt-6 sm:mt-8">
@@ -186,7 +181,7 @@ export default function DashboardPage() {
     );
   }
 
-  if (loadingData && user) { // Show skeleton if user is present but data is still loading
+  if (loadingData && user) { 
      return (
       <div className="container mx-auto py-6 sm:py-8 px-4">
         <div className="mb-6 sm:mb-8">
@@ -195,9 +190,6 @@ export default function DashboardPage() {
         </div>
         <div className="grid gap-4 sm:gap-6 md:grid-cols-2 xl:grid-cols-4 mb-6 sm:mb-8">
           {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-40 sm:h-48 rounded-lg" />)}
-        </div>
-        <div className="grid gap-4 sm:gap-6 md:grid-cols-2 xl:grid-cols-4 mb-8 sm:mb-12">
-           {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-20 sm:h-24 rounded-lg" />)}
         </div>
         <Skeleton className="h-64 sm:h-72 rounded-lg" />
       </div>
@@ -222,7 +214,6 @@ export default function DashboardPage() {
             <CardTitle className="text-base sm:text-lg">Encrypt File</CardTitle>
             <CardDescription className="text-xs sm:text-sm">Secure your files.</CardDescription>
           </CardHeader>
-          {/* CardContent is removed for more compact card */}
           <CardFooter>
             <Button asChild className="w-full text-sm">
               <Link href="/encrypt">Go to Encrypt</Link>
@@ -290,7 +281,7 @@ export default function DashboardPage() {
         <DashboardStatsCard
           title="Total Operations"
           value={totalOperations.toString()}
-          icon={<Activity />}
+          icon={<LucideActivity />}
           description="All your recorded operations"
         />
       </div>
@@ -307,14 +298,12 @@ export default function DashboardPage() {
               <ScrollArea className="h-64 sm:h-72">
                 <ul className="space-y-2 sm:space-y-3">
                   {displayedActivities.map((activity) => (
-                    <li key={activity.id} className="flex items-center text-xs sm:text-sm text-muted-foreground border-b pb-1.5 sm:pb-2 last:border-b-0 last:pb-0">
+                    <li key={activity.id} className="flex items-center text-xs sm:text-sm text-muted-foreground border-b pb-1.5 sm:pb-2 last:border-b-0 last:pb-0 gap-2">
                       {getIconForActivity(activity.type)}
-                      <span className="flex-grow truncate mr-2">
+                      <span className="flex-1 min-w-0 truncate">
                         {activity.description}
-                        {activity.fileName && <span className="text-xs italic text-foreground/70 ml-1">({activity.fileName})</span>}
-                         {activity.snippetName && <span className="text-xs italic text-foreground/70 ml-1">(Snippet: {activity.snippetName})</span>}
                       </span>
-                      <span className="text-xs ml-auto whitespace-nowrap">
+                      <span className="text-xs whitespace-nowrap flex-shrink-0">
                         {activity.timestamp ? formatDistanceToNow(new Date(activity.timestamp.seconds * 1000 + activity.timestamp.nanoseconds / 1000000), { addSuffix: true }) : 'Just now'}
                       </span>
                     </li>

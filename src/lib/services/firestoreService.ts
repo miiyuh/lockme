@@ -1,5 +1,5 @@
 
-import { db, auth } from '@/lib/firebase'; // Ensure auth is imported if needed, though not directly used here
+import { db, auth } from '@/lib/firebase'; 
 import type { Activity, SnippetDocument } from '@/types/firestore';
 import { collection, addDoc, query, orderBy, limit, getDocs, serverTimestamp, doc, updateDoc, deleteDoc, getDoc, where, Timestamp, FieldValue, getDocsFromServer, deleteField } from 'firebase/firestore';
 
@@ -10,26 +10,20 @@ const SNIPPETS_COLLECTION = 'snippets';
 export async function addActivity(
   type: Activity['type'],
   description: string,
-  details?: { fileName?: string; snippetName?: string; userId?: string }
+  details?: { userId?: string } // Removed fileName and snippetName from direct params
 ): Promise<string | null> {
   try {
-    const activityData: Omit<Activity, 'id' | 'timestamp'> & { timestamp: FieldValue; userId?: string; fileName?: string; snippetName?: string; } = {
+    const activityData: Omit<Activity, 'id' | 'timestamp'> & { timestamp: FieldValue; userId?: string; } = { 
       type,
-      description,
+      description, // Description should contain filename/snippet name if relevant
       timestamp: serverTimestamp(),
     };
     
-    if (details?.fileName) activityData.fileName = details.fileName;
-    if (details?.snippetName) activityData.snippetName = details.snippetName;
-    
     if (details?.userId) {
       activityData.userId = details.userId;
-      console.log(`FirestoreService: Preparing to add activity for userId: ${details.userId}. Data:`, JSON.stringify(activityData));
+      console.log(`FirestoreService: Preparing to add activity for userId: ${details.userId}. Data (fileName/snippetName fields excluded, should be in description):`, JSON.stringify(activityData));
     } else {
-      // If this app strictly requires userId for activities as per rules, this path should ideally not be taken.
-      // However, if global activities were ever intended, this log helps.
-      // Given current rules, an activity without userId will fail 'create' if rules enforce userId presence.
-      console.warn("FirestoreService: Attempting to add activity WITHOUT a userId. This might fail if rules require userId. Data:", JSON.stringify(activityData));
+      console.warn("FirestoreService: Attempting to add activity WITHOUT a userId. Data (fileName/snippetName fields excluded, should be in description):", JSON.stringify(activityData));
     }
     
     const docRef = await addDoc(collection(db, ACTIVITIES_COLLECTION), activityData);
@@ -37,7 +31,7 @@ export async function addActivity(
     return docRef.id;
   } catch (error) {
     console.error(`FirestoreService: Error adding activity for userId: ${details?.userId || 'N/A'}. Error:`, error);
-    throw error; // Re-throw the error to be caught by the caller
+    throw error; 
   }
 }
 
@@ -51,13 +45,11 @@ export async function getRecentActivities(userId?: string | null, count?: number
     if (userId) {
       if (count && count > 0) {
         q = query(activitiesRef, where("userId", "==", userId), orderBy("timestamp", "desc"), limit(count));
-      } else { // Fetch all for this user if count is not specified or 0/undefined
+      } else { 
         q = query(activitiesRef, where("userId", "==", userId), orderBy("timestamp", "desc"));
       }
-      console.log(`FirestoreService: getRecentActivities called for userId: ${userId}, count: ${count}, fromServer: ${fromServer}.`);
+      console.log(`FirestoreService: getRecentActivities called for userId: ${userId}, count: ${count === undefined ? 'ALL' : count}, fromServer: ${fromServer}.`);
     } else {
-      // If no userId is provided, for user-specific views, we should return an empty array.
-      // Avoid fetching global activities unless explicitly intended (e.g., an admin panel).
       console.log(`FirestoreService: getRecentActivities called without userId. Returning empty array for user-specific view.`);
       return [];
     }
@@ -71,15 +63,16 @@ export async function getRecentActivities(userId?: string | null, count?: number
     return activities;
   } catch (error) {
     console.error(`FirestoreService: Error fetching activities for userId ${userId}: `, error);
-    return []; // Return empty array on error
+    return []; 
   }
 }
 
 // Snippet Functions
 export async function addSnippetToFirestore(snippetData: Omit<SnippetDocument, 'id' | 'createdAt' | 'updatedAt' | 'userId'>, userId: string): Promise<string | null> {
   if (!userId) {
-    console.error("FirestoreService: User ID is required to add a snippet.");
-    throw new Error("User ID is required to add a snippet."); // Throw error
+    const errorMsg = "FirestoreService: User ID is required to add a snippet.";
+    console.error(errorMsg);
+    throw new Error(errorMsg); 
   }
   try {
     console.log(`FirestoreService: Adding snippet for userId: ${userId}. Data:`, snippetData);
@@ -94,7 +87,7 @@ export async function addSnippetToFirestore(snippetData: Omit<SnippetDocument, '
     return docRef.id;
   } catch (error) {
     console.error(`FirestoreService: Error adding snippet for userId ${userId}: `, error);
-    throw error; // Re-throw
+    throw error; 
   }
 }
 
@@ -123,28 +116,28 @@ export async function getSnippetsFromFirestore(userId: string, fromServer: boole
     return snippets;
   } catch (error) {
     console.error(`FirestoreService: Error fetching snippets for userId ${userId}: `, error);
-    return []; // Return empty on error
+    return []; 
   }
 }
 
 export async function getSnippetFromFirestore(snippetId: string): Promise<SnippetDocument | null> {
   try {
     const snippetRef = doc(db, SNIPPETS_COLLECTION, snippetId);
+    console.log(`FirestoreService: Fetching snippet by ID: ${snippetId}.`);
     const docSnap = await getDoc(snippetRef);
     if (docSnap.exists()) {
       const data = docSnap.data();
-      // TODO: Add ownership check if a userId is available from context
-      // This function is not currently used by components that have user context directly.
-      // If used where user context is available, an ownership check (doc.data().userId === currentUser.uid) should be added.
+      console.log(`FirestoreService: Snippet ID: ${snippetId} fetched successfully.`);
       return { 
         id: docSnap.id, 
         ...data,
         tags: data.tags || [] 
       } as SnippetDocument;
     }
+    console.log(`FirestoreService: Snippet ID: ${snippetId} does not exist.`);
     return null;
   } catch (error) {
-    console.error("FirestoreService: Error fetching snippet by ID: ", error);
+    console.error(`FirestoreService: Error fetching snippet by ID ${snippetId}: `, error);
     return null;
   }
 }
@@ -153,8 +146,6 @@ export async function getSnippetFromFirestore(snippetId: string): Promise<Snippe
 export async function updateSnippetInFirestore(snippetId: string, updates: Partial<Omit<SnippetDocument, 'id' | 'createdAt' | 'userId'>>): Promise<void> {
   try {
     const snippetRef = doc(db, SNIPPETS_COLLECTION, snippetId);
-    // Firestore security rules should handle ownership check based on the authenticated user trying to update.
-    // The component calling this should only allow updates if the snippet belongs to the current user.
     console.log(`FirestoreService: Updating snippet ID: ${snippetId}. Updates:`, updates);
     await updateDoc(snippetRef, {
       ...updates,
@@ -171,7 +162,6 @@ export async function updateSnippetInFirestore(snippetId: string, updates: Parti
 export async function deleteSnippetFromFirestore(snippetId: string): Promise<void> {
   try {
     const snippetRef = doc(db, SNIPPETS_COLLECTION, snippetId);
-    // Firestore security rules should handle ownership.
     console.log(`FirestoreService: Deleting snippet ID: ${snippetId}.`);
     await deleteDoc(snippetRef);
     console.log(`FirestoreService: Snippet ID: ${snippetId} deleted successfully.`);
@@ -180,4 +170,3 @@ export async function deleteSnippetFromFirestore(snippetId: string): Promise<voi
     throw error; 
   }
 }
-
