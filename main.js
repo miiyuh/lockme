@@ -11,7 +11,7 @@ function createWindow() {
     },
   });
 
-  win.loadURL('http://localhost:9050'); // During development
+  win.loadURL('http://localhost:9050');
 }
 
 app.whenReady().then(() => {

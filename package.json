@@ -1,6 +1,8 @@
 {
   "name": "lockme",
   "version": "1.0.0",
+  "description": "LockMe - Secure File Encryption and Decryption Desktop Application",
+  "author": "miiyuh <miiyuh@outlook.my>",
   "private": true,
   "main": "main.js",
   "scripts": {
@@ -8,7 +10,7 @@
     "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
     "genkit:watch": "genkit start -- tsx --watch src/ai/dev.ts",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -p 9050",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "electron": "concurrently \"npm run dev\" \"wait-on http://localhost:9050 && electron .\""
@@ -75,5 +77,45 @@
     "tailwindcss": "^3.4.1",
     "typescript": "^5",
     "wait-on": "^8.0.3"
-  }
+  },
+  "build": {
+    "appId": "com.miiyuh.lockme",
+    "productName": "LockMe",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "out/**",
+      "node_modules/**",
+      "package.json"
+    ],
+    "mac": {
+      "target": "dmg"
+    },
+    "win": {
+      "icon": "public/assets/img/lockme.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "linux": {
+      "target": "AppImage"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "LockMe"
+    }
+  }   
 }

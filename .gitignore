@@ -44,3 +44,9 @@ next-env.d.ts
 firebase-debug.log
 firestore-debug.log
 lockme-p6sq0-firebase-adminsdk-fbsvc-87bfacba61.json
+
+dist/
+.next/
+*.exe
+*.node
+*.asar
