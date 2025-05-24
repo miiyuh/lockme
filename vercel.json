@@ -1,0 +1,9 @@
+{
+  "redirects": [
+    {
+      "source": "/survey",
+      "destination": "https://forms.gle/qKtPedB7mnHpWjLRA",
+      "statusCode": 302
+    }
+  ]
+}
