@@ -11,11 +11,15 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'picsum.photos', // Existing
+        hostname: 'picsum.photos',
       },
       {
         protocol: 'https',
-        hostname: 'lockme.my', // Existing
+        hostname: 'miiyuh.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'lockme.my',
       },
       { // For Firebase Storage
         protocol: 'https',

@@ -63,7 +63,7 @@ export default function AboutPage() {
               <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
                 <div className="relative w-32 h-32 md:w-40 md:h-40 rounded-full overflow-hidden shadow-md flex-shrink-0">
                   <Image
-                    src="https://picsum.photos/seed/developer/200/200"
+                    src="https://miiyuh.com/assets/img/azri_cropped.png"
                     alt="Developer Profile"
                     fill
                     className="object-cover"
@@ -71,25 +71,24 @@ export default function AboutPage() {
                   />
                 </div>
                 <div className="text-center md:text-left">
-                  <h3 className="text-lg font-medium text-foreground">[Your Name/Alias]</h3>
-                  <p className="text-sm text-muted-foreground mb-3">Creator of LockMe</p>
+                  <h3 className="text-lg font-medium text-foreground">Muhamad Azri a.k.a. miiyuh</h3>
+                  <p className="text-sm text-muted-foreground mb-3">Creator and Developer of LockMe</p>
                   <p className="text-muted-foreground leading-relaxed mb-4">
                     Driven by a passion for privacy and user empowerment, I developed LockMe to provide a simple yet secure solution for everyday encryption needs. My goal is to make digital security accessible to everyone.
-                    (Replace this with your own bio!)
                   </p>
                   <div className="flex justify-center md:justify-start space-x-3">
                     <Button variant="outline" size="icon" asChild>
-                      <Link href="#" target="_blank" aria-label="LinkedIn Profile">
+                      <Link href="https://www.linkedin.com/in/miiyuh/" target="_blank" aria-label="LinkedIn Profile">
                         <Linkedin className="h-5 w-5" />
                       </Link>
                     </Button>
                     <Button variant="outline" size="icon" asChild>
-                      <Link href="#" target="_blank" aria-label="GitHub Profile">
+                      <Link href="https://github.com/miiyuh" target="_blank" aria-label="GitHub Profile">
                         <Github className="h-5 w-5" />
                       </Link>
                     </Button>
                     <Button variant="outline" size="icon" asChild>
-                      <Link href="#" target="_blank" aria-label="Personal Website">
+                      <Link href="https://muhamad-azri.my" target="_blank" aria-label="Personal Website">
                         <Globe className="h-5 w-5" />
                       </Link>
                     </Button>
