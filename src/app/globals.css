@@ -1,107 +1,149 @@
+/**
+ * LockMe Application Global Styles
+ * 
+ * Contains theme definitions for light and dark modes,
+ * with a gold and deep blue color scheme.
+ */
+
+/* Tailwind CSS Imports */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  /**
+   * Root Theme Variables
+   * 
+   * Color format: Hue Saturation Lightness (HSL)
+   */
   :root {
-    /* Light Theme (default) */
-    --background: 0 0% 100%; /* white */
-    --foreground: 0 0% 10%; /* dark gray for text */
-
-    --card: 0 0% 98%; /* light gray */
-    --card-foreground: 0 0% 10%;
-
-    --popover: 0 0% 100%; /* white */
-    --popover-foreground: 0 0% 10%;
-
-    --primary: 45 98% 48%; /* Gold #efbf04 */
-    --primary-foreground: 0 0% 10%; /* Dark text on gold buttons */
-
-    --secondary: 0 0% 95%; /* A lighter gray */
-    --secondary-foreground: 0 0% 10%;
-
-    --muted: 0 0% 90%; /* Muted light gray */
-    --muted-foreground: 0 0% 40%; /* Muted text, darker gray */
-
-    --accent: 45 98% 55%; /* A slightly brighter gold for other accents */
-    --accent-foreground: 0 0% 10%;
-
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-
-    --border: 0 0% 85%; /* Light border */
-    --input: 0 0% 93%;  /* Light input background */
-    --ring: 45 98% 50%; /* Gold for focus rings */
-
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-    --radius: 0.5rem;
-
-    --sidebar-background: 0 0% 97%; /* Lighter sidebar */
-    --sidebar-foreground: 0 0% 20%;
-    --sidebar-primary: 45 98% 48%; 
-    --sidebar-primary-foreground: 0 0% 10%;
-    --sidebar-accent: 0 0% 90%; 
-    --sidebar-accent-foreground: 0 0% 10%;
-    --sidebar-border: 0 0% 88%;
-    --sidebar-ring: 45 98% 50%;
+    /* ---------- LIGHT THEME (DEFAULT) ---------- */
+    
+    /* Base Colors */
+    --background: 0 0% 100%;      /* White background */
+    --foreground: 0 0% 10%;       /* Dark gray text */
+    --radius: 0.5rem;             /* Border radius */
+    
+    /* Card & Popover Elements */
+    --card: 0 0% 98%;             /* Light gray card background */
+    --card-foreground: 0 0% 10%;  /* Dark card text */
+    --popover: 0 0% 100%;         /* White popover background */
+    --popover-foreground: 0 0% 10%; /* Dark popover text */
+    
+    /* Primary Colors - Gold */
+    --primary: 45 98% 48%;        /* Gold #efbf04 - primary buttons */
+    --primary-foreground: 0 0% 10%; /* Dark text on gold */
+    
+    /* Secondary Colors - Light Gray */
+    --secondary: 0 0% 95%;        /* Light gray secondary elements */
+    --secondary-foreground: 0 0% 10%; /* Dark text on secondary elements */
+    
+    /* Muted Elements */
+    --muted: 0 0% 90%;            /* Muted light gray background */
+    --muted-foreground: 0 0% 40%; /* Muted darker gray text */
+    
+    /* Accent Colors */
+    --accent: 45 98% 55%;         /* Brighter gold accents */
+    --accent-foreground: 0 0% 10%; /* Dark text on accents */
+    
+    /* Destructive Elements */
+    --destructive: 0 84.2% 60.2%; /* Red for warnings/destructive actions */
+    --destructive-foreground: 0 0% 98%; /* Light text on destructive */
+    
+    /* Input & Border Elements */
+    --border: 0 0% 85%;           /* Light borders */
+    --input: 0 0% 93%;            /* Light input background */
+    --ring: 45 98% 50%;           /* Gold focus rings */
+    
+    /* Chart Colors */
+    --chart-1: 12 76% 61%;        /* Chart color 1 */
+    --chart-2: 173 58% 39%;       /* Chart color 2 */
+    --chart-3: 197 37% 24%;       /* Chart color 3 */
+    --chart-4: 43 74% 66%;        /* Chart color 4 */
+    --chart-5: 27 87% 67%;        /* Chart color 5 */
+    
+    /* Sidebar Specific */
+    --sidebar-background: 0 0% 97%;       /* Light sidebar background */
+    --sidebar-foreground: 0 0% 20%;       /* Dark sidebar text */
+    --sidebar-primary: 45 98% 48%;        /* Gold sidebar highlights */
+    --sidebar-primary-foreground: 0 0% 10%; /* Dark text on sidebar highlights */
+    --sidebar-accent: 0 0% 90%;           /* Light gray sidebar accents */
+    --sidebar-accent-foreground: 0 0% 10%; /* Dark text on sidebar accents */
+    --sidebar-border: 0 0% 88%;           /* Light sidebar borders */
+    --sidebar-ring: 45 98% 50%;           /* Gold sidebar focus rings */
   }
 
+  /**
+   * Dark Theme Variables
+   */
   .dark {
-    /* Dark Theme */
-    --background: 0 0% 10%; /* Dark charcoal #1a1a1a */
-    --foreground: 0 0% 98%; /* Light gray for text */
-
-    --card: 226 96% 14%; /* Deep blue #021945 */
-    --card-foreground: 0 0% 98%;
-
-    --popover: 226 96% 10%; /* Slightly darker blue or charcoal for popovers */
-    --popover-foreground: 0 0% 98%;
-
-    --primary: 45 98% 48%; /* Gold #efbf04 */
-    --primary-foreground: 0 0% 10%; /* Dark text on gold buttons */
-
-    --secondary: 226 96% 20%; /* A slightly lighter shade of deep blue */
-    --secondary-foreground: 0 0% 98%;
-
-    --muted: 0 0% 15%; /* Muted dark gray */
-    --muted-foreground: 0 0% 60%; /* Muted text, lighter gray */
-
-    --accent: 45 98% 55%; /* A slightly brighter gold for other accents */
-    --accent-foreground: 0 0% 10%;
-
-    --destructive: 0 72.2% 50.6%; /* Adjusted for dark theme */
-    --destructive-foreground: 0 0% 98%;
-
-    --border: 0 0% 20%; /* Dark border */
-    --input: 0 0% 15%;  /* Dark input background */
-    --ring: 45 98% 50%; /* Gold for focus rings */
-
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-
-    --sidebar-background: 0 0% 8%; /* Darker sidebar */
-    --sidebar-foreground: 0 0% 80%;
-    --sidebar-primary: 45 98% 48%;
-    --sidebar-primary-foreground: 0 0% 10%;
-    --sidebar-accent: 226 96% 14%;
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 0 0% 15%;
-    --sidebar-ring: 45 98% 50%;
+    /* ---------- DARK THEME ---------- */
+    
+    /* Base Colors */
+    --background: 0 0% 10%;        /* Dark charcoal #1a1a1a */
+    --foreground: 0 0% 98%;        /* Light gray text */
+    
+    /* Card & Popover Elements */
+    --card: 226 96% 14%;           /* Deep blue #021945 */
+    --card-foreground: 0 0% 98%;   /* Light text on cards */
+    --popover: 226 96% 10%;        /* Darker blue for popovers */
+    --popover-foreground: 0 0% 98%; /* Light text on popovers */
+    
+    /* Primary Colors - Gold (consistent with light theme) */
+    --primary: 45 98% 48%;         /* Gold #efbf04 - primary buttons */
+    --primary-foreground: 0 0% 10%; /* Dark text on gold */
+    
+    /* Secondary Colors - Deeper Blue */
+    --secondary: 226 96% 20%;      /* Lighter shade of deep blue */
+    --secondary-foreground: 0 0% 98%; /* Light text on secondary */
+    
+    /* Muted Elements */
+    --muted: 0 0% 15%;             /* Muted dark background */
+    --muted-foreground: 0 0% 60%;  /* Muted lighter text */
+    
+    /* Accent Colors */
+    --accent: 45 98% 55%;          /* Brighter gold accents (consistent) */
+    --accent-foreground: 0 0% 10%; /* Dark text on accents */
+    
+    /* Destructive Elements */
+    --destructive: 0 72.2% 50.6%;  /* Darker red for dark theme */
+    --destructive-foreground: 0 0% 98%; /* Light text on destructive */
+    
+    /* Input & Border Elements */
+    --border: 0 0% 20%;            /* Dark borders */
+    --input: 0 0% 15%;             /* Dark input background */
+    --ring: 45 98% 50%;            /* Gold focus rings (consistent) */
+    
+    /* Chart Colors - Adjusted for dark theme */
+    --chart-1: 220 70% 50%;        /* Chart color 1 */
+    --chart-2: 160 60% 45%;        /* Chart color 2 */
+    --chart-3: 30 80% 55%;         /* Chart color 3 */
+    --chart-4: 280 65% 60%;        /* Chart color 4 */
+    --chart-5: 340 75% 55%;        /* Chart color 5 */
+    
+    /* Sidebar Specific */
+    --sidebar-background: 0 0% 8%;         /* Darker sidebar */
+    --sidebar-foreground: 0 0% 80%;        /* Light sidebar text */
+    --sidebar-primary: 45 98% 48%;         /* Gold sidebar highlights */
+    --sidebar-primary-foreground: 0 0% 10%; /* Dark text on sidebar highlights */
+    --sidebar-accent: 226 96% 14%;         /* Deep blue sidebar accents */
+    --sidebar-accent-foreground: 0 0% 98%; /* Light text on sidebar accents */
+    --sidebar-border: 0 0% 15%;           /* Dark sidebar borders */
+    --sidebar-ring: 45 98% 50%;           /* Gold sidebar focus rings */
   }
 }
 
+/**
+ * Base Element Styles
+ */
 @layer base {
+  /* Apply border colors to all elements */
   * {
     @apply border-border;
   }
+  
+  /* Base body styles with monospaced font (JetBrains Mono) */
   body {
-    @apply bg-background text-foreground font-mono; /* Use font-mono which will be JetBrains Mono via variable */
+    @apply bg-background text-foreground font-mono;
   }
 }

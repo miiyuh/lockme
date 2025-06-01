@@ -1,32 +1,63 @@
-
 "use client";
 
+/**
+ * Authentication Action Page
+ * 
+ * This page handles various authentication actions triggered by email links:
+ * - Email verification
+ * - Password reset
+ * 
+ * The component processes URL parameters to determine the action type and
+ * manages the appropriate authentication flow.
+ */
+
+// React and Next.js imports
 import React, { useEffect, useState, Suspense, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+
+// Form handling
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { PasswordResetActionSchema, type PasswordResetActionFormValues } from '@/lib/schemas';
+
+// Firebase authentication
 import { auth } from '@/lib/firebase';
 import { applyActionCode, verifyPasswordResetCode, confirmPasswordReset } from 'firebase/auth';
+
+// UI Components
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label'; // Added Label import
+import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { PasswordResetActionSchema, type PasswordResetActionFormValues } from '@/lib/schemas';
-import { useToast } from '@/hooks/use-toast';
-import { Loader2, CheckCircle, AlertTriangle, Eye, EyeOff, KeyRound, MailCheck } from 'lucide-react';
 import { ThemeToggleButton } from '@/components/ThemeToggleButton';
 
+// Icons
+import { Loader2, CheckCircle, AlertTriangle, Eye, EyeOff, KeyRound, MailCheck } from 'lucide-react';
+
+// Hooks
+import { useToast } from '@/hooks/use-toast';
+
+/**
+ * Auth Action Content Component
+ * 
+ * Handles the core functionality for email verification and password reset flows
+ * based on parameters in the URL.
+ * 
+ * @returns {JSX.Element} The rendered authentication action interface
+ */
 function AuthActionContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
 
+  // Extract action parameters from URL
   const mode = React.useMemo(() => searchParams.get('mode'), [searchParams]);
   const actionCode = React.useMemo(() => searchParams.get('oobCode'), [searchParams]);
 
+  // Component state
   const [actionProcessed, setActionProcessed] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -35,6 +66,7 @@ function AuthActionContent() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  // Password reset form
   const passwordResetForm = useForm<PasswordResetActionFormValues>({
     resolver: zodResolver(PasswordResetActionSchema),
     defaultValues: {
@@ -44,6 +76,11 @@ function AuthActionContent() {
     mode: 'onChange',
   });
 
+  /**
+   * Handles email verification process
+   * 
+   * @param {string} code - The verification code from the URL
+   */
   const handleVerifyEmail = useCallback(async (code: string) => {
     setLoadingMessage("Verifying your email address...");
     try {
@@ -60,6 +97,11 @@ function AuthActionContent() {
     }
   }, [toast, setActionProcessed, setErrorMessage, setLoadingMessage, setSuccessMessage]);
 
+  /**
+   * Handles password reset verification
+   * 
+   * @param {string} code - The password reset code from the URL
+   */
   const handleVerifyPasswordReset = useCallback(async (code: string) => {
     setLoadingMessage("Verifying password reset code...");
     try {
@@ -75,15 +117,22 @@ function AuthActionContent() {
     }
   }, [toast, setEmailForPasswordReset, setErrorMessage, setLoadingMessage, setActionProcessed]);
 
+  /**
+   * Handles password reset form submission
+   * 
+   * @param {PasswordResetActionFormValues} data - Form data with new password
+   */
   const onPasswordResetSubmit: SubmitHandler<PasswordResetActionFormValues> = useCallback(async (data) => {
     if (!actionCode) {
       setErrorMessage("Action code is missing. Cannot reset password.");
       setActionProcessed(true);
       return;
     }
+    
     setLoadingMessage("Resetting your password...");
     setSuccessMessage(null);
     setErrorMessage(null);
+    
     try {
       await confirmPasswordReset(auth, actionCode, data.newPassword);
       setSuccessMessage("Your password has been successfully reset! You can now log in with your new password.");
@@ -100,8 +149,11 @@ function AuthActionContent() {
     }
   }, [actionCode, toast, passwordResetForm, setEmailForPasswordReset, setActionProcessed, setErrorMessage, setLoadingMessage, setSuccessMessage]);
 
-
+  /**
+   * Effect to process the authentication action based on URL parameters
+   */
   useEffect(() => {
+    // Handle missing parameters
     if (!mode || !actionCode) {
       // Only set error if not already in a loading/success/error state from a previous attempt or initial load
       if (!actionProcessed && !loadingMessage && !successMessage && !errorMessage) {
@@ -112,11 +164,12 @@ function AuthActionContent() {
       return;
     }
 
+    // Skip if action already processed
     if (actionProcessed) {
-      return; // Action has already been processed or an error/success state is set
+      return;
     }
 
-    // At this point, mode and actionCode are valid, and action has not been processed.
+    // Process action based on mode
     switch (mode) {
       case 'verifyEmail':
         handleVerifyEmail(actionCode);
@@ -127,12 +180,17 @@ function AuthActionContent() {
       default:
         setErrorMessage(`Unsupported action mode: ${mode}.`);
         setLoadingMessage(null);
-        setActionProcessed(true); // Mark unsupported modes as processed
+        setActionProcessed(true);
     }
-  }, [mode, actionCode, actionProcessed, handleVerifyEmail, handleVerifyPasswordReset]);
+  }, [mode, actionCode, actionProcessed, handleVerifyEmail, handleVerifyPasswordReset, errorMessage, loadingMessage, successMessage]);
 
-
+  /**
+   * Renders the appropriate content based on the current state
+   * 
+   * @returns {JSX.Element} The content to display
+   */
   const renderContent = () => {
+    // Loading state
     if (loadingMessage) {
       return (
         <div className="flex flex-col items-center justify-center text-center p-6">
@@ -142,6 +200,7 @@ function AuthActionContent() {
       );
     }
 
+    // Error state
     if (errorMessage) {
       return (
         <div className="flex flex-col items-center justify-center text-center p-6">
@@ -155,6 +214,7 @@ function AuthActionContent() {
       );
     }
 
+    // Success state
     if (successMessage) {
       return (
         <div className="flex flex-col items-center justify-center text-center p-6">
@@ -168,6 +228,7 @@ function AuthActionContent() {
       );
     }
 
+    // Password reset form state
     if (mode === 'resetPassword' && emailForPasswordReset && !successMessage) {
       return (
         <Card className="w-full max-w-md shadow-xl">
@@ -179,6 +240,7 @@ function AuthActionContent() {
           <CardContent>
             <Form {...passwordResetForm}>
               <form onSubmit={passwordResetForm.handleSubmit(onPasswordResetSubmit)} className="space-y-6">
+                {/* New Password Field */}
                 <FormField
                   control={passwordResetForm.control}
                   name="newPassword"
@@ -211,6 +273,8 @@ function AuthActionContent() {
                     </FormItem>
                   )}
                 />
+
+                {/* Confirm Password Field */}
                 <FormField
                   control={passwordResetForm.control}
                   name="confirmNewPassword"
@@ -224,7 +288,7 @@ function AuthActionContent() {
                             placeholder="Confirm new password"
                             {...field}
                             className="pr-10"
-                             disabled={!!loadingMessage}
+                            disabled={!!loadingMessage}
                           />
                           <Button
                             type="button"
@@ -233,7 +297,7 @@ function AuthActionContent() {
                             className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:text-foreground"
                             onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                             tabIndex={-1}
-                             disabled={!!loadingMessage}
+                            disabled={!!loadingMessage}
                           >
                             {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                           </Button>
@@ -243,7 +307,13 @@ function AuthActionContent() {
                     </FormItem>
                   )}
                 />
-                <Button type="submit" className="w-full" disabled={!!loadingMessage || passwordResetForm.formState.isSubmitting}>
+
+                {/* Submit Button */}
+                <Button 
+                  type="submit" 
+                  className="w-full" 
+                  disabled={!!loadingMessage || passwordResetForm.formState.isSubmitting}
+                >
                   {passwordResetForm.formState.isSubmitting || loadingMessage ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : null}
@@ -256,64 +326,76 @@ function AuthActionContent() {
       );
     }
 
-    // Fallback for initial load before mode/actionCode are ready, or if logic doesn't set a specific message
+    // Initial loading state (before processing URL parameters)
     if (!mode || !actionCode) {
-        return (
-             <div className="flex flex-col items-center justify-center text-center p-6">
-                <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-                <p className="text-lg text-muted-foreground">Loading action...</p>
-            </div>
-        );
+      return (
+        <div className="flex flex-col items-center justify-center text-center p-6">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+          <p className="text-lg text-muted-foreground">Loading action...</p>
+        </div>
+      );
     }
 
+    // Fallback for unrecognized actions
     return (
-         <div className="flex flex-col items-center justify-center text-center p-6">
-            <AlertTriangle className="h-12 w-12 text-yellow-500 mb-4" />
-            <p className="text-lg text-muted-foreground">Invalid or unrecognized action. Please check the link or try again.</p>
-             <Button asChild className="mt-6">
-                <Link href="/">Go to Homepage</Link>
-            </Button>
-        </div>
+      <div className="flex flex-col items-center justify-center text-center p-6">
+        <AlertTriangle className="h-12 w-12 text-yellow-500 mb-4" />
+        <p className="text-lg text-muted-foreground">
+          Invalid or unrecognized action. Please check the link or try again.
+        </p>
+        <Button asChild className="mt-6">
+          <Link href="/">Go to Homepage</Link>
+        </Button>
+      </div>
     );
   };
 
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center bg-background p-4 py-12 sm:px-6 lg:px-8">
-        <header className="absolute top-0 left-0 right-0 flex items-center justify-between p-4 sm:p-6">
-            <Link href="/" className="flex items-center gap-2">
-                 <Image
-                    src="https://lockme.my/assets/img/logo_lockme_highRESver.png"
-                    alt="LockMe Logo"
-                    width={120}
-                    height={60}
-                    className="h-10 w-auto"
-                    priority
-                    data-ai-hint="logo"
-                />
-            </Link>
-            <ThemeToggleButton />
-        </header>
-        
-        <div className="w-full max-w-lg">
-            {renderContent()}
-        </div>
+      {/* Header with Logo and Theme Toggle */}
+      <header className="absolute top-0 left-0 right-0 flex items-center justify-between p-4 sm:p-6">
+        <Link href="/" className="flex items-center gap-2">
+          <Image
+            src="https://lockme.my/assets/img/logo_lockme_highRESver.png"
+            alt="LockMe Logo"
+            width={120}
+            height={60}
+            className="h-10 w-auto"
+            priority
+            data-ai-hint="logo"
+          />
+        </Link>
+        <ThemeToggleButton />
+      </header>
+      
+      {/* Main Content */}
+      <div className="w-full max-w-lg">
+        {renderContent()}
+      </div>
 
-        <footer className="absolute bottom-0 left-0 right-0 p-4 text-center text-xs text-muted-foreground">
-            © {new Date().getFullYear()} LockMe. Secure your digital life.
-        </footer>
+      {/* Footer */}
+      <footer className="absolute bottom-0 left-0 right-0 p-4 text-center text-xs text-muted-foreground">
+        © {new Date().getFullYear()} LockMe. Secure your digital life.
+      </footer>
     </div>
   );
 }
 
-
+/**
+ * Auth Action Page Component
+ * 
+ * Wraps the AuthActionContent component in a Suspense boundary to handle
+ * the potential suspension during SSR when using useSearchParams().
+ * 
+ * @returns {JSX.Element} The rendered page with Suspense handling
+ */
 export default function AuthActionPage() {
-  // Suspense is necessary because useSearchParams() can suspend during SSR.
   return (
     <Suspense fallback={
-        <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
-            <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            <p className="mt-4 text-muted-foreground">Loading action handler...</p>
-        </div>
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="mt-4 text-muted-foreground">Loading action handler...</p>
+      </div>
     }>
       <AuthActionContent />
     </Suspense>

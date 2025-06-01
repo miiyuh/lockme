@@ -1,39 +1,79 @@
-
 "use client";
 
+/**
+ * Login Page Component
+ * 
+ * This page provides user authentication functionality for the LockMe application.
+ * Features include:
+ * - Email and password authentication
+ * - Password visibility toggle
+ * - Password reset functionality
+ * - Responsive layout with brand information
+ * 
+ * The component handles various states including loading, error handling,
+ * and redirects authenticated users to the dashboard.
+ */
+
+// React and Next.js imports
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+
+// Firebase authentication
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
+
+// UI Components
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast';
+
+// Icons
 import { LogIn, Eye, EyeOff, Loader2, HelpCircle } from 'lucide-react';
+
+// Hooks and Contexts
+import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 
+/**
+ * Login Page Component
+ * 
+ * Handles user authentication and provides password reset functionality
+ * 
+ * @returns {JSX.Element} The rendered login page
+ */
 export default function LoginPage() {
+  // Form state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  
+  // Hooks
   const router = useRouter();
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
 
+  /**
+   * Redirects authenticated users to the dashboard
+   */
   useEffect(() => {
     if (!authLoading && user) {
       router.push('/'); 
     }
   }, [user, authLoading, router]);
 
-
+  /**
+   * Handles user login submission
+   * 
+   * @param {React.FormEvent} e - The form submission event
+   */
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    
     try {
       await signInWithEmailAndPassword(auth, email, password);
       toast({ title: 'Login Successful', description: 'Welcome back!' });
@@ -50,6 +90,9 @@ export default function LoginPage() {
     }
   };
 
+  /**
+   * Handles password reset request
+   */
   const handleForgotPassword = async () => {
     if (!email) {
       toast({
@@ -59,7 +102,9 @@ export default function LoginPage() {
       });
       return;
     }
+    
     setIsLoading(true);
+    
     try {
       await sendPasswordResetEmail(auth, email);
       toast({
@@ -78,6 +123,7 @@ export default function LoginPage() {
     }
   };
 
+  // Display loading spinner while checking authentication state
   if (authLoading || (!authLoading && user)) {
     return (
       <div className="flex h-screen items-center justify-center bg-background p-4">
@@ -89,7 +135,7 @@ export default function LoginPage() {
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center bg-background p-4 py-12 sm:px-6 lg:px-8">
       <div className="flex w-full max-w-5xl flex-col items-center gap-8 md:gap-12 lg:flex-row lg:gap-16">
-        {/* Branding Section - order-1 makes it appear first on mobile (top) and lg (left) */}
+        {/* Branding Section */}
         <div className="order-1 flex-1 text-center lg:text-left px-4 sm:px-0">
           <Image
             src="https://lockme.my/assets/img/logo_lockme_highRESver.png"
@@ -108,16 +154,20 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* Login Card Section - order-2 makes it appear second on mobile (bottom) and lg (right) */}
+        {/* Login Form Section */}
         <div className="order-2 w-full max-w-md lg:w-auto lg:flex-shrink-0">
           <Card className="shadow-xl w-full">
             <CardHeader className="text-center">
               <LogIn className="mx-auto h-8 w-8 sm:h-10 sm:w-10 text-primary mb-2 sm:mb-3" />
               <CardTitle className="text-xl sm:text-2xl">Login to LockMe</CardTitle>
-              <CardDescription className="text-sm sm:text-base">Access your secure dashboard and tools.</CardDescription>
+              <CardDescription className="text-sm sm:text-base">
+                Access your secure dashboard and tools.
+              </CardDescription>
             </CardHeader>
+            
             <CardContent>
               <form onSubmit={handleLogin} className="space-y-4 sm:space-y-6">
+                {/* Email Field */}
                 <div className="space-y-1 sm:space-y-2">
                   <Label htmlFor="email">Email</Label>
                   <Input
@@ -130,6 +180,8 @@ export default function LoginPage() {
                     disabled={isLoading}
                   />
                 </div>
+                
+                {/* Password Field */}
                 <div className="space-y-1 sm:space-y-2">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="password">Password</Label>
@@ -141,9 +193,11 @@ export default function LoginPage() {
                       onClick={handleForgotPassword}
                       disabled={isLoading}
                     >
-                       <HelpCircle className="mr-1 h-3 w-3" /> Forgot Password?
+                      <HelpCircle className="mr-1 h-3 w-3" /> Forgot Password?
                     </Button>
                   </div>
+                  
+                  {/* Password Input with Toggle Visibility */}
                   <div className="relative">
                     <Input
                       id="password"
@@ -169,11 +223,19 @@ export default function LoginPage() {
                     </Button>
                   </div>
                 </div>
+                
+                {/* Login Button */}
                 <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Logging in...</> : 'Login'}
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Logging in...
+                    </>
+                  ) : 'Login'}
                 </Button>
               </form>
             </CardContent>
+            
+            {/* Sign Up Link */}
             <CardFooter className="flex flex-col items-center space-y-2 pt-4 sm:pt-6">
               <p className="text-sm text-muted-foreground">
                 Don't have an account?{' '}

@@ -1,10 +1,29 @@
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { HelpCircle, Search } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 
+// UI Component imports
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { 
+  Card, 
+  CardContent, 
+  CardHeader, 
+  CardTitle, 
+  CardDescription 
+} from '@/components/ui/card';
+import { 
+  Accordion, 
+  AccordionContent, 
+  AccordionItem, 
+  AccordionTrigger 
+} from '@/components/ui/accordion';
+
+// Icons
+import { HelpCircle, Search, ExternalLink } from 'lucide-react';
+
+/**
+ * Frequently asked questions data
+ * Each item contains a question and its corresponding answer
+ */
 const faqs = [
   {
     question: "How do I encrypt a file?",
@@ -36,11 +55,19 @@ const faqs = [
   }
 ];
 
+/**
+ * Help Page Component
+ * 
+ * Displays a searchable FAQ section and provides a link to contact support
+ * 
+ * @returns {JSX.Element} The help page component
+ */
 export default function HelpPage() {
   return (
     <div className="container mx-auto py-8">
       <div className="max-w-3xl mx-auto">
         <Card className="w-full shadow-xl">
+          {/* Header Section */}
           <CardHeader>
             <CardTitle className="flex items-center text-2xl">
               <HelpCircle className="mr-2 h-6 w-6 text-primary" />
@@ -50,15 +77,28 @@ export default function HelpPage() {
               Find answers to common questions about LockMe.
             </CardDescription>
           </CardHeader>
+
+          {/* Content Section */}
           <CardContent className="space-y-8">
+            {/* Search Bar */}
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-              <Input type="search" placeholder="Search FAQs..." className="pl-10" />
+              <Search 
+                className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" 
+              />
+              <Input 
+                type="search" 
+                placeholder="Search FAQs..." 
+                className="pl-10" 
+              />
             </div>
 
+            {/* FAQ Accordion */}
             <Accordion type="single" collapsible className="w-full">
               {faqs.map((faq, index) => (
-                <AccordionItem value={`item-${index}`} key={index}>
+                <AccordionItem 
+                  value={`item-${index}`} 
+                  key={index}
+                >
                   <AccordionTrigger className="text-left hover:no-underline">
                     {faq.question}
                   </AccordionTrigger>
@@ -69,9 +109,15 @@ export default function HelpPage() {
               ))}
             </Accordion>
 
+            {/* Support Link */}
             <div className="text-center pt-6">
-              <p className="text-muted-foreground mb-2">Can't find what you're looking for?</p>
-              <Button>Contact Support</Button>
+              <p className="text-muted-foreground mb-2">
+                Can't find what you're looking for?
+              </p>
+              <Button>
+                <ExternalLink className="mr-2 h-4 w-4" />
+                Contact Support
+              </Button>
             </div>
           </CardContent>
         </Card>

@@ -1,52 +1,108 @@
-
 "use client";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import DashboardStatsCard from '@/components/DashboardStatsCard';
-import { FileLock, FileUp, KeyRound, ListChecks, Sparkles, Brain, ListTree, Activity as LucideActivity, FileInput, FileOutput, FolderLock } from 'lucide-react'; // Renamed Activity to LucideActivity
+
+/**
+ * Dashboard Page Component
+ * 
+ * Provides an overview of user activity in the LockMe application, including:
+ * - Quick access cards to main application features
+ * - Statistics on user operations (encryption, decryption, passphrase generation)
+ * - Recent activity log with timestamps
+ * 
+ * The component handles authenticated and unauthenticated states, as well as
+ * loading states for both authentication and data fetching processes.
+ */
+
+// React and Hooks
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { getRecentActivities } from '@/lib/services/firestoreService';
-import type { Activity as ActivityType } from '@/types/firestore'; // Renamed Activity to ActivityType
-import { formatDistanceToNow } from 'date-fns';
+import Link from 'next/link';
+
+// UI Components
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import Link from 'next/link';
+import DashboardStatsCard from '@/components/DashboardStatsCard';
+
+// Icons
+import { 
+  FileLock, 
+  FileUp, 
+  KeyRound, 
+  ListChecks, 
+  Sparkles, 
+  Brain, 
+  ListTree, 
+  Activity as LucideActivity, 
+  FileInput, 
+  FileOutput, 
+  FolderLock 
+} from 'lucide-react';
+
+// Services and Utilities
+import { getRecentActivities } from '@/lib/services/firestoreService';
+import { formatDistanceToNow } from 'date-fns';
+
+// Types
+import type { Activity as ActivityType } from '@/types/firestore';
+
+// Contexts
 import { useAuth } from '@/contexts/AuthContext';
 import { useActivity } from '@/contexts/ActivityContext';
 
-// DIAGNOSTIC: Limit the number of activities fetched for calculating stats
-// Set to undefined or a very large number to fetch all for production
+/**
+ * Diagnostic setting to limit the number of activities fetched for calculating stats
+ * Set to undefined or a very large number to fetch all for production
+ */
 const DIAGNOSTIC_ACTIVITY_LIMIT_FOR_STATS = 50; // Temporarily limit for performance diagnosis
 // const DIAGNOSTIC_ACTIVITY_LIMIT_FOR_STATS = undefined; // Use this for fetching all
 
-
+/**
+ * Dashboard Page Component
+ * 
+ * Main dashboard for the LockMe application showing user statistics and recent activity
+ * 
+ * @returns {JSX.Element} The rendered dashboard component
+ */
 export default function DashboardPage() {
+  // Authentication and activity context
   const { user, loading: authLoading } = useAuth();
   const { lastActivityTimestamp } = useActivity(); 
+  
+  // State management
   const [displayedActivities, setDisplayedActivities] = useState<ActivityType[]>([]);
   const [loadingData, setLoadingData] = useState(true);
-  const isFetchingDataRef = useRef(false);
-
-
   const [filesEncrypted, setFilesEncrypted] = useState(0);
   const [filesDecrypted, setFilesDecrypted] = useState(0);
   const [passphrasesGenerated, setPassphrasesGenerated] = useState(0);
   const [totalOperations, setTotalOperations] = useState(0);
+  
+  // Ref to prevent concurrent fetches
+  const isFetchingDataRef = useRef(false);
 
+  /**
+   * Fetches and processes user activity data
+   * - Retrieves all user activities for statistics calculation
+   * - Updates state with counts of different activity types
+   * - Sets the most recent activities for display in the activity log
+   */
   useEffect(() => {
     const performFetch = async () => {
       console.log("DashboardPage: performFetch called at", new Date().toISOString());
+      
+      // Prevent concurrent fetches
       if (isFetchingDataRef.current) {
         console.log("DashboardPage: performFetch called while already fetching. Aborting.");
         return;
       }
       
+      // Skip fetch if authentication is still loading
       if (authLoading) {
         console.log("DashboardPage: Auth is loading, skipping fetch.");
-        setLoadingData(false); // Ensure loading state is reset if auth is still loading
+        setLoadingData(false);
         return;
       }
 
+      // Reset dashboard if user is not logged in
       if (!user) {
         console.log("DashboardPage: No user logged in, resetting stats and activities.");
         setFilesEncrypted(0);
@@ -58,8 +114,9 @@ export default function DashboardPage() {
         return;
       }
       
+      // Set loading states
       isFetchingDataRef.current = true;
-      setLoadingData(true); // Set loading to true before starting the fetch
+      setLoadingData(true);
 
       const currentUserId = user?.uid;
       console.log("DashboardPage: performFetch user check. Authenticated User ID:", currentUserId, "Last Activity Timestamp:", lastActivityTimestamp);
@@ -72,14 +129,21 @@ export default function DashboardPage() {
       }
 
       try {
+        // Fetch user activities
         const fetchStartTime = Date.now();
         console.log(`DashboardPage: Fetching all activities for stats for userId: ${currentUserId} (limit: ${DIAGNOSTIC_ACTIVITY_LIMIT_FOR_STATS === undefined ? 'ALL' : DIAGNOSTIC_ACTIVITY_LIMIT_FOR_STATS})`);
         const allUserActivities = await getRecentActivities(currentUserId, DIAGNOSTIC_ACTIVITY_LIMIT_FOR_STATS, true);
         const fetchEndTime = Date.now();
         console.log(`DashboardPage: Fetched all ${allUserActivities.length} activities for stats for user ${currentUserId} (took ${fetchEndTime - fetchStartTime}ms)`);
-        console.log("DashboardPage: All user activities fetched for stats (first 5):", JSON.stringify(allUserActivities.slice(0, 5).map(a => ({ id: a.id, type: a.type, userId: a.userId, description: a.description }))));
+        console.log("DashboardPage: All user activities fetched for stats (first 5):", 
+          JSON.stringify(allUserActivities.slice(0, 5).map(a => ({ 
+            id: a.id, 
+            type: a.type, 
+            userId: a.userId, 
+            description: a.description 
+          }))));
 
-
+        // Calculate activity statistics
         let encryptedCount = 0;
         let decryptedCount = 0;
         let passphraseCount = 0;
@@ -90,17 +154,20 @@ export default function DashboardPage() {
 
         const calcStartTime = Date.now();
         allUserActivities.forEach(act => {
-          if (act.type === 'encrypt') encryptedCount++;
-          else if (act.type === 'decrypt') decryptedCount++;
-          else if (act.type === 'generate_passphrase') passphraseCount++;
-          else if (act.type === 'enhance_prompt') enhancedPromptCount++;
-          else if (act.type === 'snippet_created') snippetCreatedCount++;
-          else if (act.type === 'snippet_updated') snippetUpdatedCount++;
-          else if (act.type === 'snippet_deleted') snippetDeletedCount++;
+          switch (act.type) {
+            case 'encrypt': encryptedCount++; break;
+            case 'decrypt': decryptedCount++; break;
+            case 'generate_passphrase': passphraseCount++; break;
+            case 'enhance_prompt': enhancedPromptCount++; break;
+            case 'snippet_created': snippetCreatedCount++; break;
+            case 'snippet_updated': snippetUpdatedCount++; break;
+            case 'snippet_deleted': snippetDeletedCount++; break;
+          }
         });
         const calcEndTime = Date.now();
         console.log(`DashboardPage: Statistics calculation took ${calcEndTime - calcStartTime}ms`);
 
+        // Calculate total operations
         const newTotalOperations = encryptedCount +
             decryptedCount +
             passphraseCount +
@@ -109,20 +176,31 @@ export default function DashboardPage() {
             snippetUpdatedCount +
             snippetDeletedCount;
 
-        console.log("DashboardPage: Calculated stats - Encrypted:", encryptedCount, "Decrypted:", decryptedCount, "Passphrases:", passphraseCount, "Total Ops:", newTotalOperations);
+        console.log("DashboardPage: Calculated stats - Encrypted:", encryptedCount, 
+          "Decrypted:", decryptedCount, 
+          "Passphrases:", passphraseCount, 
+          "Total Ops:", newTotalOperations);
 
+        // Update state with calculated statistics
         setFilesEncrypted(encryptedCount);
         setFilesDecrypted(decryptedCount);
         setPassphrasesGenerated(passphraseCount);
         setTotalOperations(newTotalOperations);
 
+        // Use the already fetched activities for the recent activity log
         console.log(`DashboardPage: Fetching recent 10 activities for log for userId: ${currentUserId}`);
-        // Use the already fetched 'allUserActivities' for the log, just take the first 10
         const recentUserActivitiesForLog = allUserActivities.slice(0, 10); 
-        console.log("DashboardPage: Recent activities for log (from allUserActivities, first 5):", JSON.stringify(recentUserActivitiesForLog.slice(0, 5).map(a => ({ id: a.id, type: a.type, userId: a.userId, description: a.description }))));
+        console.log("DashboardPage: Recent activities for log (from allUserActivities, first 5):", 
+          JSON.stringify(recentUserActivitiesForLog.slice(0, 5).map(a => ({ 
+            id: a.id, 
+            type: a.type, 
+            userId: a.userId, 
+            description: a.description 
+          }))));
+          
         setDisplayedActivities(recentUserActivitiesForLog);
-
       } catch (error) {
+        // Handle fetch errors
         console.error("DashboardPage: Failed to fetch dashboard data:", error);
         setFilesEncrypted(0);
         setFilesDecrypted(0);
@@ -130,6 +208,7 @@ export default function DashboardPage() {
         setTotalOperations(0);
         setDisplayedActivities([]);
       } finally {
+        // Reset loading states
         setLoadingData(false);
         isFetchingDataRef.current = false;
         console.log("DashboardPage: performFetch finished at", new Date().toISOString());
@@ -140,21 +219,31 @@ export default function DashboardPage() {
     performFetch();
   }, [user, authLoading, lastActivityTimestamp]);
 
-
+  /**
+   * Returns the appropriate icon component for a given activity type
+   * @param {ActivityType['type']} type - The activity type
+   * @returns {JSX.Element} The corresponding icon component
+   */
   const getIconForActivity = (type: ActivityType['type']) => {
     switch (type) {
-      case 'encrypt': return <FileLock className="h-4 w-4 text-primary mr-2 shrink-0" />;
-      case 'decrypt': return <FileUp className="h-4 w-4 text-primary mr-2 shrink-0" />;
-      case 'generate_passphrase': return <KeyRound className="h-4 w-4 text-primary mr-2 shrink-0" />;
-      case 'enhance_prompt': return <Sparkles className="h-4 w-4 text-primary mr-2 shrink-0" />;
+      case 'encrypt': 
+        return <FileLock className="h-4 w-4 text-primary mr-2 shrink-0" />;
+      case 'decrypt': 
+        return <FileUp className="h-4 w-4 text-primary mr-2 shrink-0" />;
+      case 'generate_passphrase': 
+        return <KeyRound className="h-4 w-4 text-primary mr-2 shrink-0" />;
+      case 'enhance_prompt': 
+        return <Sparkles className="h-4 w-4 text-primary mr-2 shrink-0" />;
       case 'snippet_created':
       case 'snippet_updated':
       case 'snippet_deleted':
          return <ListChecks className="h-4 w-4 text-primary mr-2 shrink-0" />;
-      default: return <LucideActivity className="h-4 w-4 text-muted-foreground mr-2 shrink-0" />;
+      default: 
+        return <LucideActivity className="h-4 w-4 text-muted-foreground mr-2 shrink-0" />;
     }
   };
 
+  // Loading state when authentication is in progress
   if (authLoading || (!user && !authLoading && loadingData)) { 
     return (
       <div className="container mx-auto py-6 sm:py-8 px-4">
@@ -170,23 +259,29 @@ export default function DashboardPage() {
     );
   }
   
+  // Unauthenticated state
   if (!user && !authLoading) { 
     return (
       <div className="container mx-auto py-6 sm:py-8 px-4">
         <div className="text-center mt-6 sm:mt-8">
             <h1 className="text-2xl font-semibold mb-4">Welcome to LockMe</h1>
-            <p className="text-base sm:text-lg text-muted-foreground">Please <Link href="/" className="text-primary hover:underline">log in or sign up</Link> to view your dashboard and use the app features.</p>
+            <p className="text-base sm:text-lg text-muted-foreground">
+              Please <Link href="/" className="text-primary hover:underline">log in or sign up</Link> to view your dashboard and use the app features.
+            </p>
         </div>
       </div>
     );
   }
 
+  // Data loading state
   if (loadingData && user) { 
      return (
       <div className="container mx-auto py-6 sm:py-8 px-4">
         <div className="mb-6 sm:mb-8">
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Dashboard</h1>
-          <p className="text-sm sm:text-base text-muted-foreground">Loading your LockMe activity, {user.displayName || user.email}...</p>
+          <p className="text-sm sm:text-base text-muted-foreground">
+            Loading your LockMe activity, {user.displayName || user.email}...
+          </p>
         </div>
         <div className="grid gap-4 sm:gap-6 md:grid-cols-2 xl:grid-cols-4 mb-6 sm:mb-8">
           {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-40 sm:h-48 rounded-lg" />)}
@@ -196,9 +291,10 @@ export default function DashboardPage() {
     );
   }
 
-
+  // Main dashboard view
   return (
     <div className="container mx-auto py-6 sm:py-8 px-4">
+      {/* Dashboard Header */}
       <div className="mb-6 sm:mb-8">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Dashboard</h1>
         <p className="text-sm sm:text-base text-muted-foreground">
@@ -206,8 +302,9 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      {/* Shortcut Cards */}
+      {/* Quick Access Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
+        {/* Encrypt File Card */}
         <Card className="flex flex-col h-full shadow-lg hover:shadow-xl transition-shadow">
           <CardHeader className="pb-2 sm:pb-4 flex-grow">
             <FolderLock className="h-8 w-8 mb-2 text-primary" />
@@ -220,7 +317,9 @@ export default function DashboardPage() {
             </Button>
           </CardFooter>
         </Card>
-         <Card className="flex flex-col h-full shadow-lg hover:shadow-xl transition-shadow">
+
+        {/* Decrypt File Card */}
+        <Card className="flex flex-col h-full shadow-lg hover:shadow-xl transition-shadow">
           <CardHeader className="pb-2 sm:pb-4 flex-grow">
             <FileOutput className="h-8 w-8 mb-2 text-primary" />
             <CardTitle className="text-base sm:text-lg">Decrypt File</CardTitle>
@@ -232,6 +331,8 @@ export default function DashboardPage() {
             </Button>
           </CardFooter>
         </Card>
+
+        {/* AI Toolkit Card */}
         <Card className="flex flex-col h-full shadow-lg hover:shadow-xl transition-shadow">
           <CardHeader className="pb-2 sm:pb-4 flex-grow">
             <Sparkles className="h-8 w-8 mb-2 text-primary" />
@@ -244,7 +345,9 @@ export default function DashboardPage() {
             </Button>
           </CardFooter>
         </Card>
-         <Card className="flex flex-col h-full shadow-lg hover:shadow-xl transition-shadow">
+
+        {/* Snippet Manager Card */}
+        <Card className="flex flex-col h-full shadow-lg hover:shadow-xl transition-shadow">
           <CardHeader className="pb-2 sm:pb-4 flex-grow">
             <ListChecks className="h-8 w-8 mb-2 text-primary" />
             <CardTitle className="text-base sm:text-lg">Code Snippet Manager</CardTitle>
@@ -304,7 +407,12 @@ export default function DashboardPage() {
                         {activity.description}
                       </span>
                       <span className="text-xs whitespace-nowrap flex-shrink-0">
-                        {activity.timestamp ? formatDistanceToNow(new Date(activity.timestamp.seconds * 1000 + activity.timestamp.nanoseconds / 1000000), { addSuffix: true }) : 'Just now'}
+                        {activity.timestamp ? 
+                          formatDistanceToNow(
+                            new Date(activity.timestamp.seconds * 1000 + activity.timestamp.nanoseconds / 1000000), 
+                            { addSuffix: true }
+                          ) : 'Just now'
+                        }
                       </span>
                     </li>
                   ))}
@@ -328,10 +436,10 @@ export default function DashboardPage() {
                 )}
               </div>
             )}
-             {displayedActivities.length > 0 && (
-                <p className="mt-3 sm:mt-4 text-xs text-muted-foreground">
-                  Showing your last {displayedActivities.length} activities.
-                </p>
+            {displayedActivities.length > 0 && (
+              <p className="mt-3 sm:mt-4 text-xs text-muted-foreground">
+                Showing your last {displayedActivities.length} activities.
+              </p>
             )}
           </CardContent>
         </Card>

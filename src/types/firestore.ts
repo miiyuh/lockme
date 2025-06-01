@@ -14,8 +14,8 @@ export interface SnippetDocument {
   language: string;
   code: string;
   isEncrypted: boolean;
-  iv?: string;
-  salt?: string;
+  iv?: string | import('firebase/firestore').FieldValue;
+  salt?: string | import('firebase/firestore').FieldValue;
   tags?: string[];
   createdAt: Timestamp;
   updatedAt: Timestamp;

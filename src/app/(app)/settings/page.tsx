@@ -5,301 +5,662 @@ import { useState, useEffect, type ChangeEvent, useRef } from 'react';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+
+// Firebase imports
+import { updateProfile, type User, sendPasswordResetEmail, deleteUser, sendEmailVerification } from 'firebase/auth';
+import { ref, uploadBytesResumable, getDownloadURL, type UploadTaskSnapshot } from 'firebase/storage';
+import { useAuth } from '@/contexts/AuthContext';
+import { auth, storage } from '@/lib/firebase';
+
+// UI Component imports
+import { 
+  Settings, UserCircle, Image as ImageIcon, KeyRound, Trash2, 
+  Loader2, CheckCircle2, UploadCloud, AlertTriangle, 
+  MailWarning, ShieldAlert, MailCheck 
+} from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Settings, UserCircle, Image as ImageIcon, KeyRound, Trash2, Loader2, CheckCircle2, UploadCloud, Crop, AlertTriangle, MailWarning, ShieldAlert, MailCheck } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
-import { auth, storage } from '@/lib/firebase';
-import { updateProfile, type User, sendPasswordResetEmail, deleteUser, sendEmailVerification } from 'firebase/auth';
-import { ref, uploadBytesResumable, getDownloadURL, type UploadTaskSnapshot } from 'firebase/storage';
-import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import imageCompression from 'browser-image-compression';
 import { Progress } from '@/components/ui/progress';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { 
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, 
+  AlertDialogTitle, AlertDialogTrigger 
+} from "@/components/ui/alert-dialog";
+
+// Image processing
+import imageCompression from 'browser-image-compression';
 import ReactCrop, { centerCrop, makeAspectCrop, type Crop as CropperCropType, type PixelCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
-import Link from 'next/link';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { useRouter } from 'next/navigation';
 
 
+// Form validation schema
 const profileFormSchema = z.object({
-  displayName: z.string().min(1, "Display name cannot be empty.").max(50, "Display name is too long."),
+  displayName: z.string()
+    .min(1, "Display name cannot be empty.")
+    .max(50, "Display name is too long."),
 });
+
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
-async function canvasToFile(canvas: HTMLCanvasElement, fileName: string, fileType: string = 'image/png', quality: number = 0.95): Promise<File | null> {
+// Local storage keys
+const NOTIFICATIONS_KEY = 'lockme-notificationsEnabled';
+const ENCRYPTION_STRENGTH_KEY = 'lockme-defaultEncryptionStrength';
+
+/**
+ * Converts a canvas to a File object
+ * @param canvas - The canvas element to convert
+ * @param fileName - The name to use for the resulting file
+ * @param fileType - The MIME type of the file (default: image/png)
+ * @param quality - The quality of the resulting image (0-1)
+ * @returns A Promise that resolves to the File or null if conversion fails
+ */
+async function canvasToFile(
+  canvas: HTMLCanvasElement, 
+  fileName: string, 
+  fileType: string = 'image/png', 
+  quality: number = 0.95
+): Promise<File | null> {
   return new Promise((resolve) => {
     canvas.toBlob((blob) => {
-      if (!blob) { console.error('Canvas to Blob conversion failed'); resolve(null); return; }
-      resolve(new File([blob], fileName, { type: fileType, lastModified: Date.now() }));
+      if (!blob) { 
+        console.error('Canvas to Blob conversion failed'); 
+        resolve(null); 
+        return; 
+      }
+      resolve(new File([blob], fileName, { 
+        type: fileType, 
+        lastModified: Date.now() 
+      }));
     }, fileType, quality);
   });
 }
 
-async function canvasPreview(image: HTMLImageElement, canvas: HTMLCanvasElement, crop: PixelCrop) {
+/**
+ * Renders a cropped preview of an image to a canvas
+ * @param image - The source image element
+ * @param canvas - The target canvas element
+ * @param crop - The crop parameters
+ */
+async function canvasPreview(
+  image: HTMLImageElement, 
+  canvas: HTMLCanvasElement, 
+  crop: PixelCrop
+) {
   const ctx = canvas.getContext('2d');
   if (!ctx) { throw new Error('No 2d context'); }
+  
+  // Calculate scaling factors
   const scaleX = image.naturalWidth / image.width;
   const scaleY = image.naturalHeight / image.height;
   const pixelRatio = window.devicePixelRatio || 1;
+  
+  // Set canvas dimensions
   canvas.width = Math.floor(crop.width * scaleX * pixelRatio);
   canvas.height = Math.floor(crop.height * scaleY * pixelRatio);
+  
+  // Configure rendering context
   ctx.scale(pixelRatio, pixelRatio);
   ctx.imageSmoothingQuality = 'high';
+  
+  // Calculate crop coordinates
   const cropX = crop.x * scaleX;
   const cropY = crop.y * scaleY;
   const centerX = image.naturalWidth / 2;
   const centerY = image.naturalHeight / 2;
+  
+  // Draw the cropped image
   ctx.save();
   ctx.translate(-cropX, -cropY);
   ctx.translate(centerX, centerY);
   ctx.translate(-centerX, -centerY);
-  ctx.drawImage(image, 0, 0, image.naturalWidth, image.naturalHeight, 0, 0, image.naturalWidth, image.naturalHeight);
+  ctx.drawImage(
+    image, 
+    0, 0, 
+    image.naturalWidth, image.naturalHeight, 
+    0, 0, 
+    image.naturalWidth, image.naturalHeight
+  );
   ctx.restore();
 }
 
-const NOTIFICATIONS_KEY = 'lockme-notificationsEnabled';
-const ENCRYPTION_STRENGTH_KEY = 'lockme-defaultEncryptionStrength';
-
+/**
+ * Settings page component allowing users to manage profile, security and preferences
+ */
 export default function SettingsPage() {
+  // Auth and navigation hooks
   const { user, setUser, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
 
-  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
-  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
-  const [isUploadingPicture, setIsUploadingPicture] = useState(false);
-  const [isResendingVerification, setIsResendingVerification] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
-  const [isCompressing, setIsCompressing] = useState(false);
-  
-  const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
-  const [profileImagePreview, setProfileImagePreview] = useState<string | null>(null); 
-
-  const [imgSrcToCrop, setImgSrcToCrop] = useState<string>('');
-  const [crop, setCrop] = useState<CropperCropType | undefined>();
-  const [completedCrop, setCompletedCrop] = useState<PixelCrop | undefined>();
-  const [showCropperModal, setShowCropperModal] = useState(false);
-  const imageRefForCrop = useRef<HTMLImageElement | null>(null);
-  const previewCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const aspect = 1 / 1; 
-
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [defaultEncryptionStrength, setDefaultEncryptionStrength] = useState("aes-256-gcm");
-
+  // Profile form
   const profileForm = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: { displayName: user?.displayName || '' },
     mode: 'onChange',
   });
 
+  // Processing state
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [isUploadingPicture, setIsUploadingPicture] = useState(false);
+  const [isResendingVerification, setIsResendingVerification] = useState(false);
+  const [isCompressing, setIsCompressing] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  
+  // Profile image state
+  const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
+  const [profileImagePreview, setProfileImagePreview] = useState<string | null>(null); 
+
+  // Image cropping state
+  const [imgSrcToCrop, setImgSrcToCrop] = useState<string>('');
+  const [crop, setCrop] = useState<CropperCropType | undefined>();
+  const [completedCrop, setCompletedCrop] = useState<PixelCrop | undefined>();
+  const [showCropperModal, setShowCropperModal] = useState(false);
+  const imageRefForCrop = useRef<HTMLImageElement | null>(null);
+  const previewCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const aspect = 1 / 1; // Square aspect ratio for profile pictures
+
+  // User preferences
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [defaultEncryptionStrength, setDefaultEncryptionStrength] = useState("aes-256-gcm");
+  // Load saved preferences from local storage
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      // Load notification preferences
       const savedNotifications = localStorage.getItem(NOTIFICATIONS_KEY);
-      if (savedNotifications !== null) setNotificationsEnabled(JSON.parse(savedNotifications));
+      if (savedNotifications !== null) {
+        setNotificationsEnabled(JSON.parse(savedNotifications));
+      }
       
+      // Load encryption strength preference
       const savedStrength = localStorage.getItem(ENCRYPTION_STRENGTH_KEY);
-      if (savedStrength) setDefaultEncryptionStrength(savedStrength);
+      if (savedStrength) {
+        setDefaultEncryptionStrength(savedStrength);
+      }
     }
   }, []);
 
+  // Save notification preferences
   useEffect(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(notificationsEnabled));
     }
   }, [notificationsEnabled]);
 
+  // Save encryption strength preferences
   useEffect(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem(ENCRYPTION_STRENGTH_KEY, defaultEncryptionStrength);
     }
   }, [defaultEncryptionStrength]);
 
+  // Update profile form and preview when user changes
   useEffect(() => {
     if (user) {
+      // Update form with current display name
       profileForm.reset({ displayName: user.displayName || '' });
+      
+      // Only use user's photoURL if no image has been selected yet
       if (!profileImageFile) { 
         setProfileImagePreview(user.photoURL || null);
       }
     }
   }, [user, user?.photoURL, profileImageFile, profileForm]);
-
+  /**
+   * Updates the user's display name
+   */
   const handleDisplayNameUpdate: SubmitHandler<ProfileFormValues> = async (data) => {
-    if (!user || !auth.currentUser) { toast({ title: "Error", description: "You must be logged in.", variant: "destructive" }); return; }
+    if (!user || !auth.currentUser) { 
+      toast({ 
+        title: "Error", 
+        description: "You must be logged in.", 
+        variant: "destructive" 
+      });
+      return;
+    }
+    
     setIsUpdatingProfile(true);
+    
     try {
+      // Update profile in Firebase Auth
       await updateProfile(auth.currentUser, { displayName: data.displayName });
+      
+      // Reload user data and update context
       await auth.currentUser.reload(); 
       setUser(auth.currentUser); 
-      toast({ title: "Profile Updated", description: "Your display name has been updated." });
+      
+      toast({ 
+        title: "Profile Updated", 
+        description: "Your display name has been updated." 
+      });
+      
       profileForm.reset({ displayName: data.displayName }); 
     } catch (error) {
       console.error("Error updating display name:", error);
-      toast({ title: "Update Failed", description: (error as Error).message, variant: "destructive" });
-    } finally { setIsUpdatingProfile(false); }
+      toast({ 
+        title: "Update Failed", 
+        description: (error as Error).message, 
+        variant: "destructive" 
+      });
+    } finally { 
+      setIsUpdatingProfile(false); 
+    }
   };
 
+  /**
+   * Handles the initial file selection for profile picture
+   */
   const handleOriginalFileSelect = (event: ChangeEvent<HTMLInputElement>) => {
     const fileInput = event.target;
     const file = fileInput.files?.[0];
+    
     if (file) {
-      console.log(`SettingsPage: Original file selected: ${file.name}, Size: ${(file.size / 1024 / 1024).toFixed(2)} MB`);
+      console.log(
+        `SettingsPage: Original file selected: ${file.name}, Size: ${(file.size / 1024 / 1024).toFixed(2)} MB`
+      );
+      
+      // Check file size limit
       if (file.size > 15 * 1024 * 1024) { 
-        toast({ title: "File Too Large", description: "Original image cannot exceed 15MB.", variant: "destructive" });
-        if (fileInput) fileInput.value = ""; return;
+        toast({ 
+          title: "File Too Large", 
+          description: "Original image cannot exceed 15MB.", 
+          variant: "destructive" 
+        });
+        
+        if (fileInput) fileInput.value = ""; 
+        return;
       }
+      
+      // Reset crop state
       setCrop(undefined); 
+      
+      // Read and display the image
       const reader = new FileReader();
-      reader.addEventListener('load', () => { setImgSrcToCrop(reader.result?.toString() || ''); setShowCropperModal(true); });
+      reader.addEventListener('load', () => { 
+        setImgSrcToCrop(reader.result?.toString() || ''); 
+        setShowCropperModal(true); 
+      });
+      
       reader.readAsDataURL(file);
     }
-     if (fileInput) fileInput.value = ""; 
+    
+    // Clear the file input
+    if (fileInput) fileInput.value = ""; 
   };
 
+  /**
+   * Initializes crop area when image loads in the cropper
+   */
   function onImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
     imageRefForCrop.current = e.currentTarget;
     const { width, height } = e.currentTarget;
-    if (aspect) { setCrop(centerCrop(makeAspectCrop({ unit: '%', width: 90 }, aspect, width, height), width, height)); }
-  }
-
-  const handleConfirmCrop = async () => {
-    if (!completedCrop || !imageRefForCrop.current || !previewCanvasRef.current) {
-      toast({ title: "Crop Error", description: "Could not process crop. Please try again.", variant: "destructive" }); return;
+    
+    if (aspect) { 
+      // Create a centered crop with the specified aspect ratio
+      setCrop(
+        centerCrop(
+          makeAspectCrop({ unit: '%', width: 90 }, aspect, width, height),
+          width, 
+          height
+        )
+      ); 
     }
+  }
+  /**
+   * Processes the cropped image when user confirms crop selection
+   */
+  const handleConfirmCrop = async () => {
+    // Validate required references
+    if (!completedCrop || !imageRefForCrop.current || !previewCanvasRef.current) {
+      toast({ 
+        title: "Crop Error", 
+        description: "Could not process crop. Please try again.", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    // Close modal and show processing state
     setShowCropperModal(false);
     setIsCompressing(true);
-    toast({ title: "Processing Cropped Image...", description: "Compressing your selection. Please wait." });
-    await canvasPreview(imageRefForCrop.current, previewCanvasRef.current, completedCrop);
-    const croppedFile = await canvasToFile(previewCanvasRef.current, 'croppedProfileImage.png', 'image/png');
+    
+    toast({ 
+      title: "Processing Cropped Image...", 
+      description: "Compressing your selection. Please wait." 
+    });
+    
+    // Render the crop to canvas
+    await canvasPreview(
+      imageRefForCrop.current, 
+      previewCanvasRef.current, 
+      completedCrop
+    );
+    
+    // Convert canvas to file
+    const croppedFile = await canvasToFile(
+      previewCanvasRef.current, 
+      'croppedProfileImage.png', 
+      'image/png'
+    );
+    
     if (!croppedFile) {
-      toast({ title: "Crop Error", description: "Failed to generate cropped file.", variant: "destructive" });
-      setIsCompressing(false); return;
+      toast({ 
+        title: "Crop Error", 
+        description: "Failed to generate cropped file.", 
+        variant: "destructive" 
+      });
+      setIsCompressing(false);
+      return;
     }
-    console.log(`SettingsPage: Cropped file created: ${croppedFile.name}, Size: ${(croppedFile.size / 1024 / 1024).toFixed(2)} MB`);
-    const options = { maxSizeMB: 0.5, maxWidthOrHeight: 800, useWebWorker: true, initialQuality: 0.7, alwaysKeepResolution: false };
+    
+    console.log(
+      `SettingsPage: Cropped file created: ${croppedFile.name}, Size: ${(croppedFile.size / 1024 / 1024).toFixed(2)} MB`
+    );
+    
+    // Configure compression options
+    const options = { 
+      maxSizeMB: 0.5, 
+      maxWidthOrHeight: 800, 
+      useWebWorker: true, 
+      initialQuality: 0.7, 
+      alwaysKeepResolution: false 
+    };
+    
     try {
       console.log("SettingsPage: Compressing cropped image...");
+      
+      // Compress the image
       const compressedCroppedFile = await imageCompression(croppedFile, options);
-      console.log(`SettingsPage: Compressed cropped file ready: ${compressedCroppedFile.name}, Size: ${(compressedCroppedFile.size / 1024 / 1024).toFixed(2)} MB`);
+      
+      console.log(
+        `SettingsPage: Compressed file ready: ${compressedCroppedFile.name}, Size: ${(compressedCroppedFile.size / 1024 / 1024).toFixed(2)} MB`
+      );
+      
+      // Update state with compressed image
       setProfileImageFile(compressedCroppedFile);
       setProfileImagePreview(URL.createObjectURL(compressedCroppedFile));
-      toast({ title: "Image Ready for Upload", description: `Cropped and compressed to ${(compressedCroppedFile.size / 1024 / 1024).toFixed(2)}MB. Click 'Upload Image'.`});
+      
+      toast({ 
+        title: "Image Ready for Upload", 
+        description: `Cropped and compressed to ${(compressedCroppedFile.size / 1024 / 1024).toFixed(2)}MB. Click 'Upload Image'.`
+      });
+      
     } catch (error) {
       console.error('SettingsPage: Error compressing cropped image:', error);
-      toast({ title: "Compression Failed", description: "Could not compress the cropped image.", variant: "destructive" });
-      setProfileImageFile(null); setProfileImagePreview(user?.photoURL || null); 
-    } finally { setIsCompressing(false); setImgSrcToCrop(''); }
+      
+      toast({ 
+        title: "Compression Failed", 
+        description: "Could not compress the cropped image.", 
+        variant: "destructive" 
+      });
+      
+      // Reset state
+      setProfileImageFile(null);
+      setProfileImagePreview(user?.photoURL || null); 
+      
+    } finally { 
+      setIsCompressing(false);
+      setImgSrcToCrop('');
+    }
   };
-
+  /**
+   * Uploads the processed profile image to Firebase Storage
+   */
   const handleProfileImageUpload = async () => {
-    if (!user || !auth.currentUser || !profileImageFile) { toast({ title: "Error", description: "No image selected or user not logged in.", variant: "destructive"}); return; }
-    setIsUploadingPicture(true); setUploadProgress(null); 
+    // Validate prerequisites
+    if (!user || !auth.currentUser || !profileImageFile) { 
+      toast({ 
+        title: "Error", 
+        description: "No image selected or user not logged in.", 
+        variant: "destructive"
+      }); 
+      return; 
+    }
+    
+    // Set loading state
+    setIsUploadingPicture(true); 
+    setUploadProgress(null); 
+    
+    // Create unique filename for storage
     const fileExtension = profileImageFile.name.split('.').pop() || 'png';
     const timestamp = Date.now();
     const fileNameInStorage = `profile_${user.uid}_${timestamp}.${fileExtension}`;
     const filePath = `profilePictures/${user.uid}/${fileNameInStorage}`;
     const storageRef = ref(storage, filePath);
-    console.log(`SettingsPage: Starting upload to: ${filePath}. Compressed Size: ${(profileImageFile.size / 1024 / 1024).toFixed(2)} MB`);
+    
+    console.log(
+      `SettingsPage: Starting upload to: ${filePath}. Compressed Size: ${(profileImageFile.size / 1024 / 1024).toFixed(2)} MB`
+    );
+    
+    // Start upload
     const uploadTask = uploadBytesResumable(storageRef, profileImageFile);
+    
+    // Monitor upload progress
     uploadTask.on('state_changed', 
+      // Progress handler
       (snapshot: UploadTaskSnapshot) => {
         const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
         setUploadProgress(progress);
-        console.log(`SettingsPage: Upload is ${progress.toFixed(2)}% done. State: ${snapshot.state}. Transferred: ${snapshot.bytesTransferred}/${snapshot.totalBytes}`);
+        console.log(
+          `SettingsPage: Upload is ${progress.toFixed(2)}% done. State: ${snapshot.state}. ` +
+          `Transferred: ${snapshot.bytesTransferred}/${snapshot.totalBytes}`
+        );
       }, 
+      
+      // Error handler
       (error) => {
         console.error("SettingsPage: Error uploading profile picture:", error);
-        toast({ title: "Upload Failed", description: (error as Error).message, variant: "destructive" });
-        setIsUploadingPicture(false); setUploadProgress(null);
+        toast({ 
+          title: "Upload Failed", 
+          description: (error as Error).message, 
+          variant: "destructive" 
+        });
+        setIsUploadingPicture(false); 
+        setUploadProgress(null);
       }, 
+      
+      // Completion handler
       async () => {
         try {
+          // Get download URL for the uploaded file
           const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
           console.log('SettingsPage: File available at', downloadURL);
+          
+          // Update user profile with new photo URL
           await updateProfile(auth.currentUser!, { photoURL: downloadURL });
+          
+          // Reload user data
           await auth.currentUser!.reload(); 
           setUser(auth.currentUser); 
-          toast({ title: "Profile Picture Updated!", description: "Your new profile picture is now active." });
+          
+          toast({ 
+            title: "Profile Picture Updated!", 
+            description: "Your new profile picture is now active." 
+          });
+          
+          // Clean up
           setProfileImageFile(null); 
         } catch (error) {
           console.error("SettingsPage: Error getting download URL or updating profile:", error);
-          toast({ title: "Profile Update Failed", description: "Could not finalize profile picture update.", variant: "destructive" });
-        } finally { setIsUploadingPicture(false); setUploadProgress(null); }
+          toast({ 
+            title: "Profile Update Failed", 
+            description: "Could not finalize profile picture update.", 
+            variant: "destructive" 
+          });
+        } finally { 
+          setIsUploadingPicture(false); 
+          setUploadProgress(null); 
+        }
       }
     );
   };
-
+  /**
+   * Sends a password reset email to the user
+   */
   const handlePasswordChange = async () => {
-    if (!user || !user.email) { toast({ title: "Error", description: "You must be logged in and have a verified email.", variant: "destructive" }); return; }
+    if (!user || !user.email) { 
+      toast({ 
+        title: "Error", 
+        description: "You must be logged in and have a verified email.", 
+        variant: "destructive" 
+      }); 
+      return; 
+    }
+    
     setIsUpdatingProfile(true); 
+    
     try {
       await sendPasswordResetEmail(auth, user.email);
-      toast({ title: "Password Reset Email Sent", description: `An email has been sent to ${user.email} with instructions.` });
+      
+      toast({ 
+        title: "Password Reset Email Sent", 
+        description: `An email has been sent to ${user.email} with instructions.` 
+      });
     } catch (error) {
       console.error("Error sending password reset email:", error);
-      toast({ title: "Failed to Send Email", description: (error as Error).message || "Could not send email.", variant: "destructive" });
-    } finally { setIsUpdatingProfile(false); }
+      
+      toast({ 
+        title: "Failed to Send Email", 
+        description: (error as Error).message || "Could not send email.", 
+        variant: "destructive" 
+      });
+    } finally { 
+      setIsUpdatingProfile(false); 
+    }
   };
 
+  /**
+   * Resends email verification
+   */
   const handleResendVerificationEmail = async () => {
     if (!auth.currentUser) {
-      toast({ title: "Error", description: "You must be logged in.", variant: "destructive" });
+      toast({ 
+        title: "Error", 
+        description: "You must be logged in.", 
+        variant: "destructive" 
+      });
       return;
     }
+    
     setIsResendingVerification(true);
+    
     try {
       await sendEmailVerification(auth.currentUser);
-      toast({ title: "Verification Email Sent", description: `A new verification email has been sent to ${auth.currentUser.email}. Please check your inbox.` });
+      
+      toast({ 
+        title: "Verification Email Sent", 
+        description: `A new verification email has been sent to ${auth.currentUser.email}. Please check your inbox.` 
+      });
     } catch (error: any) {
       console.error("Error resending verification email:", error);
-      toast({ title: "Failed to Resend", description: error.message || "Could not resend verification email.", variant: "destructive" });
+      
+      toast({ 
+        title: "Failed to Resend", 
+        description: error.message || "Could not resend verification email.", 
+        variant: "destructive" 
+      });
     } finally {
       setIsResendingVerification(false);
     }
   };
 
-
+  /**
+   * Deletes the user account
+   */
   const handleDeleteAccount = async () => {
-    if (!auth.currentUser) { toast({ title: "Error", description: "You must be logged in.", variant: "destructive" }); return; }
+    if (!auth.currentUser) { 
+      toast({ 
+        title: "Error", 
+        description: "You must be logged in.", 
+        variant: "destructive" 
+      }); 
+      return; 
+    }
+    
     setIsDeletingAccount(true);
+    
     try {
       await deleteUser(auth.currentUser);
-      toast({ title: "Account Deleted", description: "Your account has been permanently deleted. We're sad to see you go!" });
+      
+      toast({ 
+        title: "Account Deleted", 
+        description: "Your account has been permanently deleted. We're sad to see you go!" 
+      });
+      
       router.push('/login'); 
     } catch (error: any) {
       console.error("Error deleting account:", error);
+      
       let description = "Could not delete account. Please try again.";
+      
       if (error.code === 'auth/requires-recent-login') {
-        description = "This operation is sensitive and requires recent authentication. Please log out and log back in before deleting your account.";
+        description = "This operation is sensitive and requires recent authentication. " +
+                      "Please log out and log back in before deleting your account.";
       } else {
         description = error.message || description;
       }
-      toast({ title: "Account Deletion Failed", description, variant: "destructive" });
+      
+      toast({ 
+        title: "Account Deletion Failed", 
+        description, 
+        variant: "destructive" 
+      });
     } finally {
       setIsDeletingAccount(false);
     }
   };
 
-
+  /**
+   * Clears local storage preferences
+   */
   const handleClearLocalCache = () => {
+    // Remove items from local storage
     localStorage.removeItem(NOTIFICATIONS_KEY); 
     localStorage.removeItem(ENCRYPTION_STRENGTH_KEY);
-    toast({ title: "Local Cache Cleared", description: "Locally stored app preferences have been reset." });
+    
+    // Reset state to defaults
     setNotificationsEnabled(true);
     setDefaultEncryptionStrength("aes-256-gcm");
+    
+    toast({ 
+      title: "Local Cache Cleared", 
+      description: "Locally stored app preferences have been reset." 
+    });
   };
 
-  const isProcessing = isCompressing || isUploadingPicture || isUpdatingProfile || isDeletingAccount || isResendingVerification;
-
-  if (authLoading) { return <div className="container mx-auto py-8 text-center">Loading settings...</div>; }
-  if (!user) { return <div className="container mx-auto py-8 text-center">Please log in to manage settings.</div>; }
+  // Combined processing state for UI feedback
+  const isProcessing = isCompressing || 
+                       isUploadingPicture || 
+                       isUpdatingProfile || 
+                       isDeletingAccount || 
+                       isResendingVerification;
+  // Loading state
+  if (authLoading) { 
+    return (
+      <div className="container mx-auto py-8 text-center">
+        Loading settings...
+      </div>
+    ); 
+  }
+  
+  // Not logged in state
+  if (!user) { 
+    return (
+      <div className="container mx-auto py-8 text-center">
+        Please log in to manage settings.
+      </div>
+    ); 
+  }
 
   return (
     <div className="container mx-auto py-8">
@@ -430,7 +791,7 @@ export default function SettingsPage() {
               </div>
             </section>
           </CardContent>
-          <CardFooter className="pt-6 text-center"><p className="text-xs text-muted-foreground">LockMe Version: 1.0.0 (Simulated)</p></CardFooter>
+          <CardFooter className="pt-6 text-center"><p className="text-xs text-muted-foreground">LockMe v1.0.0</p></CardFooter>
         </Card>
       </div>
     </div>
