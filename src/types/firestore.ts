@@ -6,6 +6,8 @@ export interface Activity {
   description: string;
   timestamp: Timestamp;
   userId?: string;
+  fileName?: string;
+  snippetName?: string;
 }
 
 export interface SnippetDocument {
